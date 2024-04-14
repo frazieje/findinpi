@@ -25,7 +25,8 @@ The [file](src/main/resources/Pi1M.txt) provided with this repository is only 1M
 interesting to search. 
 
 #### Getting a data file
-You download some 1B+ digit calculations of pi from [here](https://stuff.mit.edu/afs/sipb/contrib/pi/), or you can calculate your own pi data file with [y-cruncher](http://www.numberworld.org/y-cruncher/), or you
+You download some 1B+ digit calculations of pi from [here](https://stuff.mit.edu/afs/sipb/contrib/pi/), 
+or you can calculate your own pi data file with [y-cruncher](http://www.numberworld.org/y-cruncher/), or you
 
 Set the location of the file as an environment variable:
 ```shell
