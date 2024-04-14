@@ -6,10 +6,10 @@ import kotlinx.coroutines.withContext
 import java.io.*
 
 class FindInPi(
-    private val dataFile: File,
+    private val dataFilePath: String,
     private val bufferSizeBytes: Int,
 ) {
     suspend fun find(piFinder: PiFinder, searchText: String): SearchResult = withContext(Dispatchers.IO) {
-        piFinder.search(dataFile.absolutePath, searchText, bufferSizeBytes)
+        piFinder.search(dataFilePath, searchText, bufferSizeBytes)
     }
 }
