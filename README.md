@@ -1,8 +1,8 @@
 # FindInPi
-A Kotlin HTTP API to searching pi for specific strings. Includes a pure kotlin and C/JNI/kotlin impelemntation.
+A Kotlin HTTP API to searching pi for specific strings of numbers. Includes a pure kotlin and C/JNI/kotlin impelemntation.
 
-### Building
-#### Prerequisites
+## Building
+### Prerequisites
 - Java 11+
 - CMake 3.x+
 
@@ -16,10 +16,16 @@ To build only the native library:
 ./gradlew nativeBuild
 ```
 
-### Running
-#### Prerequisites
-Before running, you'll need to provide a pi data file. The file should be a **SINGLE LINE** text file containg the digits
-of pi. 
+## Running
+### Prerequisites
+Before running, you'll need to provide a pi data file. The file should be a **SINGLE LINE** text file containg the
+digits of pi. 
+
+The [file](src/main/resources/Pi1M.txt) provided with this repository is only 1M digits long, which isn't very 
+interesting to search. 
+
+#### Getting a data file
+You download some 1B+ digit calculations of pi from [here](https://stuff.mit.edu/afs/sipb/contrib/pi/), or you can calculate your own pi data file with [y-cruncher](http://www.numberworld.org/y-cruncher/), or you
 
 Set the location of the file as an environment variable:
 ```shell
