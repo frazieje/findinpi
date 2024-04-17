@@ -8,13 +8,19 @@ import java.io.Reader
 
 class KPiFinder : PiFinder {
 
-    override fun search(dataFilePath: String, searchText: String, bufferSize: Int): SearchResult {
+    override fun search(
+        dataFilePath: String,
+        searchText: String,
+        bufferSize: Long,
+        offset: Long,
+        limit: Long
+    ): SearchResult {
         val time = System.currentTimeMillis()
         return File(dataFilePath).inputStream().bufferedReader().use {
             var result: SearchResult? = null
-            var offsetCount = 0
+            var offsetCount = 0L
             while (result == null) {
-                val buffer = runCatching { readExactly(it, bufferSize) }
+                val buffer = runCatching { readExactly(it, bufferSize.toInt()) }
                 if (buffer.isSuccess) {
                     val loc = buffer.getOrNull()?.indexOf(searchText)
                     if (loc != null && loc >= 0) {
@@ -27,7 +33,7 @@ class KPiFinder : PiFinder {
                 }
             }
             result
-        }.copy(timeMs = System.currentTimeMillis() - time)
+        }.copy(searchTimeMs = System.currentTimeMillis() - time)
     }
 
     @Throws(IOException::class)

@@ -10,14 +10,15 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import java.io.File
+import java.util.Properties
 
-fun Application.configureRouting() {
-    val piFile = System.getenv("PI_DATA") ?: ""
-    val findInPi = FindInPi(piFile, 1048576)
+fun Application.configureRouting(dataFilePath: String) {
+
+    val findInPi = FindInPi(dataFilePath, 1048576, 1)
     routing {
         post("/search") {
             val req = call.receive<SearchRequest>()
-            call.respond(findInPi.find(NativePiFinder(), req.searchText))
+            call.respond(findInPi.find(KPiFinder(), req.searchText))
         }
     }
 }

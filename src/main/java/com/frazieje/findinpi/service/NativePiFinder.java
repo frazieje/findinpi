@@ -10,5 +10,11 @@ public class NativePiFinder implements PiFinder {
     }
 
     @Override
-    public native @NotNull SearchResult search(@NotNull String dataFilePath, @NotNull String searchText, int bufferSize);
+    public native @NotNull SearchResult search(
+            @NotNull String dataFilePath,
+            @NotNull String searchText,
+            long bufferSize,
+            long offset,
+            long limit
+    );
 }

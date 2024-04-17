@@ -57,7 +57,7 @@ int64_t timespecDiff(struct timespec *timeA_p, struct timespec *timeB_p)
 }
 
 JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_search
-        (JNIEnv * env, jobject thisObj, jstring filePath, jstring searchText, jint bufferSize) {
+        (JNIEnv * env, jobject thisObj, jstring filePath, jstring searchText, jlong bufferSize, jlong offset, jlong limit) {
 
     char *search_string, *file_path;
     unsigned long long result = -1;
