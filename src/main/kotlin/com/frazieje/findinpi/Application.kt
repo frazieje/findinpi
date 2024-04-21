@@ -33,6 +33,7 @@ fun main(args: Array<String>) {
             throw RuntimeException("Could not find pi data or read built-in pi data file")
         }
     }
+    logger.info("Starting Application. Data file location: $piFile")
     embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = {
         configureRouting(piFile)
         configureSerialization()

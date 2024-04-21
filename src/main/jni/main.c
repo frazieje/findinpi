@@ -5,10 +5,15 @@
 #include <time.h>
 #include "com_frazieje_findinpi_service_NativePiFinder.h"
 
-unsigned long long searchtext(char *fname, char *str, int chunk_size) {
+
+int64_t MAX(int64_t a, int64_t b) { return((a) > (b) ? a : b); }
+
+int64_t MIN(int64_t a, int64_t b) { return((a) < (b) ? a : b); }
+
+unsigned long long searchtext(char *fname, char *str, int chunk_size, long int offset, long long length, JNIEnv * env, jobject isActiveKFunc) {
     FILE *fp;
-    unsigned long long chunk_num = 1;
-    unsigned long long find_result = -1;
+    long long offset_count = 0;
+    long long find_result = -1;
     char *temp = malloc(chunk_size);
 
     if (temp == NULL) {
@@ -27,17 +32,37 @@ unsigned long long searchtext(char *fname, char *str, int chunk_size) {
     	return(-1);
     }
 
-    while(fgets(temp, chunk_size, fp) != NULL) {
-        loc = strstr(temp, str);
-        if(loc != NULL) {
-            find_result = ((chunk_num - 1) * (chunk_size - 1) + (loc - temp));
-            break;
-        }
-        chunk_num++;
+    int seek_result = fseek(fp, offset, SEEK_CUR);
+
+    if (seek_result != 0) {
+        free(temp);
+        perror("Error setting file offset");
+        return(-1);
     }
 
-    if(find_result == -1) {
-        printf("Sorry, couldn't find a match.\n");
+    int search_len = strlen(str);
+    int len;
+
+    jclass cls_kfunc0 = (*env)->GetObjectClass(env, isActiveKFunc);
+    jmethodID cls_kfunc0_invoke = (*env)->GetMethodID(env, cls_kfunc0, "invoke", "()Ljava/lang/Object;");
+    jclass boolClass = (*env)->FindClass(env, "java/lang/Boolean");
+    jmethodID booleanValueMID = (*env)->GetMethodID(env, boolClass, "booleanValue", "()Z");
+
+    jobject booleanObject;
+    jboolean result;
+    unsigned char is_active = 1;
+
+    while(is_active && fgets(temp, MIN(length - offset_count, (long long)chunk_size), fp) != NULL && length - offset_count >= search_len) {
+        loc = strstr(temp, str);
+        len = strlen(temp);
+        if(loc != NULL) {
+            find_result = offset + offset_count + (loc - temp);
+            break;
+        }
+        offset_count += len;
+        booleanObject = (jobject)((*env)->CallObjectMethod(env, isActiveKFunc, cls_kfunc0_invoke));
+        result = (jboolean)(*env)->CallBooleanMethod(env, booleanObject, booleanValueMID);
+        is_active = (unsigned char)result;
     }
 
     //Close the file if still open.
@@ -56,8 +81,16 @@ int64_t timespecDiff(struct timespec *timeA_p, struct timespec *timeB_p)
            ((timeB_p->tv_sec * 1000000000) + timeB_p->tv_nsec);
 }
 
-JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_search
-        (JNIEnv * env, jobject thisObj, jstring filePath, jstring searchText, jlong bufferSize, jlong offset, jlong limit) {
+JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_search(
+    JNIEnv * env,
+    jobject thisObj,
+    jstring filePath,
+    jstring searchText,
+    jlong bufferSize,
+    jlong offset,
+    jlong length,
+    jobject isActiveKFunc
+) {
 
     char *search_string, *file_path;
     unsigned long long result = -1;
@@ -73,7 +106,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     printf("file_path = %s, search = %s\n", file_path, search_string);
 
     gettimeofday(&tval_before, NULL);
-    result = searchtext(file_path, search_string, (int)bufferSize);
+    result = searchtext(file_path, search_string, (int)bufferSize, offset, length, env, isActiveKFunc);
     gettimeofday(&tval_after, NULL);
     timersub(&tval_after, &tval_before, &tval_result);
 
@@ -85,11 +118,13 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         found = (unsigned char)1;
     }
 
-    printf("%llu location found", result);
+    if (found) {
+        printf("%llu location found", result);
+    }
 
     jclass cls_search_result = (*env)->FindClass(env, "com/frazieje/findinpi/model/SearchResult");
-    jmethodID cnstr_search_result = (*env)->GetMethodID(env, cls_search_result, "<init>", "(ZJJ)V");
-    jobject obj_result = (*env)->NewObject(env, cls_search_result, cnstr_search_result, found, result, elapsed);
+    jmethodID cnstr_search_result = (*env)->GetMethodID(env, cls_search_result, "<init>", "(ZJJLjava/lang/String;)V");
+    jobject obj_result = (*env)->NewObject(env, cls_search_result, cnstr_search_result, found, result, elapsed, NULL);
 
     return obj_result;
 }

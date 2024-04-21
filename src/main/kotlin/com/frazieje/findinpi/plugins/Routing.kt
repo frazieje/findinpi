@@ -14,7 +14,7 @@ import java.util.Properties
 
 fun Application.configureRouting(dataFilePath: String) {
 
-    val findInPi = FindInPi(dataFilePath, 1048576, 1)
+    val findInPi = FindInPi(dataFilePath, 1048576, 4)
     routing {
         post("/search") {
             val req = call.receive<SearchRequest>()

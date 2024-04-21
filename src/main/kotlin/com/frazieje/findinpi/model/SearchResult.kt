@@ -4,5 +4,5 @@ data class SearchResult(
     val found: Boolean,
     val offset: Long,
     val searchTimeMs: Long,
-    val message: String = ""
+    val message: String? = null
 )
