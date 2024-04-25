@@ -65,7 +65,7 @@ class FindInPi(
                         byteRange.length
                     ) {
                         val active = result == null
-                        logger.debug("child search job {} finished, active = {}", index, active)
+                        logger.debug("child query from {}, active = {}", index, active)
                         active
                     }.also {
                         logger.debug("child search job {} finished, found = {}", index, it.found)
