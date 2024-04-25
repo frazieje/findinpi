@@ -3,6 +3,7 @@ package com.frazieje.findinpi.service
 import com.frazieje.findinpi.model.SearchResult
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.io.FileInputStream
 import java.io.IOException
 import java.io.Reader
 import kotlin.math.min
@@ -22,10 +23,9 @@ class KPiFinder : PiFinder {
     ): SearchResult {
         logger.debug("searching $dataFilePath for $searchText. buffersize $bufferSize offset $offset, length $length")
         val time = System.currentTimeMillis()
-        return File(dataFilePath).inputStream().bufferedReader().use {
+        return File(dataFilePath).inputStream().apply { skipNBytes(offset) }.bufferedReader().use {
             logger.debug("got stream $dataFilePath for $searchText. buffersize $bufferSize offset $offset, length $length")
             var result: SearchResult? = null
-            it.skip(offset)
             var offsetCount = 0
             logger.debug("entering loop $dataFilePath for $searchText. buffersize $bufferSize offset $offset, length $length")
             while (isActive() && length - offsetCount >= searchText.length) {
