@@ -23,9 +23,11 @@ class KPiFinder : PiFinder {
         logger.debug("searching $dataFilePath for $searchText. buffersize $bufferSize offset $offset, length $length")
         val time = System.currentTimeMillis()
         return File(dataFilePath).inputStream().bufferedReader().use {
+            logger.debug("got stream $dataFilePath for $searchText. buffersize $bufferSize offset $offset, length $length")
             var result: SearchResult? = null
             it.skip(offset)
             var offsetCount = 0
+            logger.debug("entering loop $dataFilePath for $searchText. buffersize $bufferSize offset $offset, length $length")
             while (isActive() && length - offsetCount >= searchText.length) {
                 val buffer = runCatching { readExactly(it, min(length - offsetCount, bufferSize).toInt()) }
                 if (buffer.isSuccess) {
