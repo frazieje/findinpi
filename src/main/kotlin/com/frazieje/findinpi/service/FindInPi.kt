@@ -19,7 +19,7 @@ class FindInPi(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    private val scope = CoroutineScope(Dispatchers.Default)
+    private val scope = CoroutineScope(Dispatchers.IO)
 
     private val ranges by lazy {
         val dataFile = File(dataFilePath)

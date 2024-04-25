@@ -14,7 +14,7 @@ import kotlin.reflect.full.createInstance
 
 fun Application.configureRouting(dataFilePath: String, finderType: PiFinderType) {
 
-    val findInPi = FindInPi(dataFilePath, 1048576, 4)
+    val findInPi = FindInPi(dataFilePath, 1048576, 8)
     routing {
         post("/search") {
             val req = call.receive<SearchRequest>()
