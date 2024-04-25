@@ -2,23 +2,22 @@ package com.frazieje.findinpi
 
 import com.frazieje.findinpi.plugins.configureRouting
 import com.frazieje.findinpi.plugins.configureSerialization
+import com.frazieje.findinpi.service.KPiFinder
+import com.frazieje.findinpi.service.NativePiFinder
+import com.frazieje.findinpi.service.PiFinder
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import org.slf4j.LoggerFactory
 import java.io.File
+import kotlin.reflect.KClass
 
 fun main(args: Array<String>) {
     val logger = LoggerFactory.getLogger("FindInPi")
     val path = if (args.isNotEmpty() && args[0].isNotBlank()) {
         args[0].trim()
     } else {
-        val env = System.getenv("PI_DATA")
-        if (!env.isNullOrBlank()) {
-            env.trim()
-        } else {
-            ""
-        }
+        readEnv("PI_DATA")
     }
 
     val piFile = try {
@@ -33,10 +32,31 @@ fun main(args: Array<String>) {
             throw RuntimeException("Could not find pi data or read built-in pi data file")
         }
     }
-    logger.info("Starting Application. Data file location: $piFile")
+
+    val finder = try {
+        PiFinderType.valueOf(readEnv("PI_FINDER").uppercase())
+    } catch (e: Exception) {
+        PiFinderType.KOTLIN
+    }
+
+    logger.info("Starting Application. Data file location: $piFile. Finder: $finder")
     embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = {
-        configureRouting(piFile)
+        configureRouting(piFile, finder)
         configureSerialization()
     })
         .start(wait = true)
+}
+
+enum class PiFinderType(val finderClass: KClass<out PiFinder>) {
+    KOTLIN(KPiFinder::class),
+    NATIVE(NativePiFinder::class)
+}
+
+fun readEnv(name: String): String {
+    val env = System.getenv(name)
+    return if (!env.isNullOrBlank()) {
+        env.trim()
+    } else {
+        ""
+    }
 }
