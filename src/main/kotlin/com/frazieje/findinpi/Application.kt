@@ -17,7 +17,9 @@ fun main(args: Array<String>) {
     val path = if (args.isNotEmpty() && args[0].isNotBlank()) {
         args[0].trim()
     } else {
-        readEnv("PI_DATA")
+        val envPath = readEnv("PI_DATA")
+        logger.debug("ENV_PATH value $envPath")
+        envPath
     }
 
     val piFile = try {
