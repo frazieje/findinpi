@@ -16,8 +16,7 @@ application {
     mainClass.set("com.frazieje.findinpi.ApplicationKt")
 
     val isDevelopment: Boolean = project.ext.has("development")
-    val nativeBuild = file(project.layout.buildDirectory.dir("native")).absolutePath
-    applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment", "-Djava.library.path=$nativeBuild")
+    applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
 }
 
 val nativeBuildDir = project.layout.buildDirectory.dir("native").get().asFile
