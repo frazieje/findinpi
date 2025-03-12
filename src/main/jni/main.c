@@ -17,8 +17,11 @@ unsigned long long searchtext(char *fname, char *str, int chunk_size, long int o
     long long find_result = -1;
     char *temp = malloc(chunk_size);
     int64_t totalElapsed = 0;
+    int64_t totalReadElapsed = 0;
+    int64_t read_time;
     int64_t chunk_time;
     int64_t avg_chunk_time;
+    int64_t avg_read_time;
 
     if (temp == NULL) {
         perror("Error allocating search buffer");
@@ -56,10 +59,14 @@ unsigned long long searchtext(char *fname, char *str, int chunk_size, long int o
     jboolean result;
     unsigned char is_active = 1;
 
-    struct timeval tval_before, tval_after, tval_result;
+    struct timeval tval_before, tval_after, tval_result, tval_read_result;
     gettimeofday(&tval_before, NULL);
 
     while(is_active && fgets(temp, MIN(length - offset_count, (long long)chunk_size), fp) != NULL && length - offset_count >= search_len) {
+        gettimeofday(&tval_after, NULL);
+        timersub(&tval_after, &tval_before, &tval_read_result);
+        read_time = (tval_read_result.tv_sec*1000000 + tval_read_result.tv_usec);
+        totalReadElapsed += read_time;
         loc = strstr(temp, str);
         len = strlen(temp);
         if(loc != NULL) {
@@ -80,8 +87,9 @@ unsigned long long searchtext(char *fname, char *str, int chunk_size, long int o
     }
 
     avg_chunk_time = totalElapsed / chunk_count;
+    avg_read_time = totalReadElapsed / chunk_count;
 
-    printf("avg chunk time %lld us\n", avg_chunk_time);
+    printf("avg read time %lld, avg chunk time %lld us\n", avg_read_time, avg_chunk_time);
     fflush(stdout);
 
     //Close the file if still open.
