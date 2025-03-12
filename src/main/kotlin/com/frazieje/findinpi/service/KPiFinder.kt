@@ -25,7 +25,7 @@ class KPiFinder : PiFinder {
         val time = System.currentTimeMillis()
         return File(dataFilePath).inputStream().apply { skipNBytes(offset) }.bufferedReader().use {
             var result: SearchResult? = null
-            var offsetCount = 0
+            var offsetCount = 0L
             while (isActive() && length - offsetCount >= searchText.length) {
                 val buffer = runCatching { readExactly(it, min(length - offsetCount, bufferSize).toInt()) }
                 if (buffer.isSuccess) {
