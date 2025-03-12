@@ -67,6 +67,7 @@ unsigned long long searchtext(char *fname, char *str, int chunk_size, long int o
         timersub(&tval_after, &tval_before, &tval_read_result);
         read_time = (tval_read_result.tv_sec*1000000 + tval_read_result.tv_usec);
         totalReadElapsed += read_time;
+        gettimeofday(&tval_before, NULL);
         loc = strstr(temp, str);
         len = strlen(temp);
         if(loc != NULL) {
@@ -89,7 +90,7 @@ unsigned long long searchtext(char *fname, char *str, int chunk_size, long int o
     avg_chunk_time = totalElapsed / chunk_count;
     avg_read_time = totalReadElapsed / chunk_count;
 
-    printf("avg read time %lld, avg chunk time %lld us\n", avg_read_time, avg_chunk_time);
+    printf("avg read time %lld, avg chunk time %lld us, total chunks %d\n", avg_read_time, avg_chunk_time, chunk_count);
     fflush(stdout);
 
     //Close the file if still open.
