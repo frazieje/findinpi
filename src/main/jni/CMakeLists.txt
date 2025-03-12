@@ -12,5 +12,7 @@ endif ()
 
 message (STATUS "dir ${NATIVE_BUILD_DIR}")
 
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${NATIVE_BUILD_DIR}/lib)
+
 include_directories(${JNI_INCLUDE_DIRS} ${NATIVE_BUILD_DIR})
 add_library(bigfind SHARED main.c)

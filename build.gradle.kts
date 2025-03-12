@@ -23,6 +23,14 @@ application {
 val nativeBuildDir = project.layout.buildDirectory.dir("native").get().asFile
 val nativeSourceDir = project.layout.projectDirectory.dir("src/main/jni").asFile
 
+distributions {
+    main {
+        contents {
+            from(File(nativeBuildDir, "lib"))
+        }
+    }
+}
+
 val generateNativeBuildSystemTask = tasks.create<Exec>("generateNativeBuildSystem") {
     dependsOn(tasks.getByName("compileJava"))
 //    val platform = if (OperatingSystem.current().isLinux) {
