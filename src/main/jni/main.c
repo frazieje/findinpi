@@ -5,122 +5,144 @@
 #include <time.h>
 #include "com_frazieje_findinpi_service_NativePiFinder.h"
 
+#define  READALL_OK          0  /* Success */
+#define  READALL_INVALID    -1  /* Invalid parameters */
+#define  READALL_ERROR      -2  /* Stream error */
+#define  READALL_TOOMUCH    -3  /* Too much input */
+#define  READALL_NOMEM      -4  /* Out of memory */
 
 int64_t MAX(int64_t a, int64_t b) { return((a) > (b) ? a : b); }
 
 int64_t MIN(int64_t a, int64_t b) { return((a) < (b) ? a : b); }
 
-unsigned long long searchtext(char *fname, char *str, int chunk_size, long int offset, long long length, JNIEnv * env, jobject isActiveKFunc) {
-    FILE *fp;
-    long long offset_count = 0;
-    long chunk_count = 0;
-    long long find_result = -1;
-    char *temp = malloc(chunk_size);
-    int64_t totalElapsed = 0;
-    int64_t totalReadElapsed = 0;
-    int64_t read_time;
-    int64_t chunk_time;
-    int64_t avg_chunk_time;
-    int64_t avg_read_time;
+char *data;
+size_t data_size;
 
-    if (temp == NULL) {
-        perror("Error allocating search buffer");
-        return(-1);
+/* This function returns one of the READALL_ constants above.
+   If the return value is zero == READALL_OK, then:
+     (*dataptr) points to a dynamically allocated buffer, with
+     (*sizeptr) chars read from the file.
+     The buffer is allocated for one extra char, which is NUL,
+     and automatically appended after the data.
+   Initial values of (*dataptr) and (*sizeptr) are ignored.
+*/
+int readall(FILE *in, char **dataptr, size_t *sizeptr, int chunk_size)
+{
+    char  *data = NULL, *temp;
+    size_t size = 0;
+    size_t used = 0;
+    size_t n;
+
+    /* None of the parameters can be NULL. */
+    if (in == NULL || dataptr == NULL || sizeptr == NULL)
+        return READALL_INVALID;
+
+    /* A read error already occurred? */
+    if (ferror(in))
+        return READALL_ERROR;
+
+    while (1) {
+
+        if (used + chunk_size + 1 > size) {
+            size = used + chunk_size + 1;
+
+            /* Overflow check. Some ANSI C compilers
+               may optimize this away, though. */
+            if (size <= used) {
+                free(data);
+                return READALL_TOOMUCH;
+            }
+
+            temp = realloc(data, size);
+            if (temp == NULL) {
+                free(data);
+                return READALL_NOMEM;
+            }
+            data = temp;
+        }
+
+        n = fread(data + used, 1, chunk_size, in);
+        if (n == 0)
+            break;
+
+        used += n;
     }
 
+    if (ferror(in)) {
+        free(data);
+        return READALL_ERROR;
+    }
+
+    temp = realloc(data, used + 1);
+    if (temp == NULL) {
+        free(data);
+        return READALL_NOMEM;
+    }
+    data = temp;
+    data[used] = '\0';
+
+    *dataptr = data;
+    *sizeptr = used;
+
+    return READALL_OK;
+}
+
+unsigned long long searchtext(char *str) {
+
+    unsigned long long find_result = -1;
     char *loc;
 
-    if((fp = fopen(fname, "r")) == NULL) {
-        free(temp);
-        char err[] = "Error opening pi data file (%s)";
-        char errMsg[strlen(err)-2+strlen(fname)+1];
-        sprintf(errMsg, err, fname);
-        perror(errMsg);
-    	return(-1);
+    loc = strstr(data, str);
+    if(loc != NULL) {
+        find_result = loc - data;
     }
 
-    int seek_result = fseek(fp, offset, SEEK_CUR);
-
-    if (seek_result != 0) {
-        free(temp);
-        perror("Error setting file offset");
-        return(-1);
+    if(find_result == -1) {
+        printf("Sorry, couldn't find a match.\n");
     }
-
-    int search_len = strlen(str);
-    int len;
-
-    jclass cls_kfunc0 = (*env)->GetObjectClass(env, isActiveKFunc);
-    jmethodID cls_kfunc0_invoke = (*env)->GetMethodID(env, cls_kfunc0, "invoke", "()Ljava/lang/Object;");
-    jclass boolClass = (*env)->FindClass(env, "java/lang/Boolean");
-    jmethodID booleanValueMID = (*env)->GetMethodID(env, boolClass, "booleanValue", "()Z");
-
-    jobject booleanObject;
-    jboolean result;
-    unsigned char is_active = 1;
-
-    struct timeval tval_before, tval_after, tval_result, tval_read_result;
-    gettimeofday(&tval_before, NULL);
-
-    while(is_active && fgets(temp, MIN(length - offset_count, (long long)chunk_size), fp) != NULL && length - offset_count >= search_len) {
-        gettimeofday(&tval_after, NULL);
-        timersub(&tval_after, &tval_before, &tval_read_result);
-        read_time = (tval_read_result.tv_sec*1000000 + tval_read_result.tv_usec);
-        totalReadElapsed += read_time;
-        gettimeofday(&tval_before, NULL);
-        loc = strstr(temp, str);
-        len = strlen(temp);
-        if(loc != NULL) {
-            find_result = offset + offset_count + (loc - temp);
-            break;
-        }
-        offset_count += len;
-        booleanObject = (jobject)((*env)->CallObjectMethod(env, isActiveKFunc, cls_kfunc0_invoke));
-        result = (jboolean)(*env)->CallBooleanMethod(env, booleanObject, booleanValueMID);
-        is_active = (unsigned char)result;
-        gettimeofday(&tval_after, NULL);
-        timersub(&tval_after, &tval_before, &tval_result);
-        chunk_time = (tval_result.tv_sec*1000000 + tval_result.tv_usec);
-        totalElapsed += chunk_time;
-        chunk_count++;
-        fflush(stdout);
-        gettimeofday(&tval_before, NULL);
-    }
-
-    avg_chunk_time = totalElapsed / chunk_count;
-    avg_read_time = totalReadElapsed / chunk_count;
-
-    printf("avg read time %lld, avg chunk time %lld us, total chunks %d\n", avg_read_time, avg_chunk_time, chunk_count);
-    fflush(stdout);
-
-    //Close the file if still open.
-    if(fp) {
-        fclose(fp);
-    }
-
-    free(temp);
 
     return find_result;
 }
 
-int64_t timespecDiff(struct timespec *timeA_p, struct timespec *timeB_p)
-{
-    return ((timeA_p->tv_sec * 1000000000) + timeA_p->tv_nsec) -
-           ((timeB_p->tv_sec * 1000000000) + timeB_p->tv_nsec);
+JNIEXPORT void JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_init(
+    JNIEnv *env,
+    jobject thisObj,
+    jstring filePath,
+    jlong buffer_size
+) {
+    FILE *fp = NULL;
+    int load_result = READALL_INVALID;
+    char *search_string, *file_path;
+    struct timeval tval_before, tval_after, tval_result;
+    int64_t elapsed;
+
+    file_path = ((char *)((*env)->GetStringUTFChars(env, filePath, 0)));
+
+    if((fp = fopen(file_path, "r")) == NULL) {
+        perror("fopen");
+        return;
+    }
+
+    printf("Loading data file into main memory...\n");
+    fflush(stdout);
+
+    gettimeofday(&tval_before, NULL);
+    load_result = readall(fp, &data, &data_size, (int)buffer_size);
+    gettimeofday(&tval_after, NULL);
+    timersub(&tval_after, &tval_before, &tval_result);
+
+    elapsed = (tval_result.tv_sec*1000000 + tval_result.tv_usec) / 1000;
+    printf("Finished loading data file in %lldms. size = %lu\n", elapsed, data_size);
+    fflush(stdout);
 }
 
 JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_search(
     JNIEnv * env,
     jobject thisObj,
-    jstring filePath,
-    jstring searchText,
-    jlong bufferSize,
-    jlong offset,
-    jlong length,
-    jobject isActiveKFunc
+    jstring searchText
 ) {
 
-    char *search_string, *file_path;
+    char *search_string;
     unsigned long long result = -1;
 
     unsigned char found;
@@ -128,13 +150,10 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     struct timeval tval_before, tval_after, tval_result;
     int64_t elapsed;
 
-    file_path = ((char *)((*env)->GetStringUTFChars(env, filePath, 0)));
     search_string = ((char *)((*env)->GetStringUTFChars(env, searchText, 0)));
 
-    printf("file_path = %s, search = %s\n", file_path, search_string);
-
     gettimeofday(&tval_before, NULL);
-    result = searchtext(file_path, search_string, (int)bufferSize, offset, length, env, isActiveKFunc);
+    result = searchtext(search_string);
     gettimeofday(&tval_after, NULL);
     timersub(&tval_after, &tval_before, &tval_result);
 
@@ -147,7 +166,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     }
 
     if (found) {
-        printf("%llu location found", result);
+        printf("%llu location found in %lldms", result, elapsed);
     }
 
     jclass cls_search_result = (*env)->FindClass(env, "com/frazieje/findinpi/model/SearchResult");

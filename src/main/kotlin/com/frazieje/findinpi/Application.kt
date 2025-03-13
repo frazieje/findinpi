@@ -2,14 +2,12 @@ package com.frazieje.findinpi
 
 import com.frazieje.findinpi.plugins.configureRouting
 import com.frazieje.findinpi.plugins.configureSerialization
-import com.frazieje.findinpi.service.KPiFinder
+import com.frazieje.findinpi.service.FindInPi
 import com.frazieje.findinpi.service.NativePiFinder
-import com.frazieje.findinpi.service.PiFinder
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import org.slf4j.LoggerFactory
 import java.io.File
-import kotlin.reflect.KClass
 
 fun main(args: Array<String>) {
     val logger = LoggerFactory.getLogger("FindInPi")
@@ -34,23 +32,16 @@ fun main(args: Array<String>) {
         }
     }
 
-    val finder = try {
-        PiFinderType.valueOf(readEnv("PI_FINDER").uppercase())
-    } catch (e: Exception) {
-        PiFinderType.KOTLIN
-    }
+    logger.info("Starting Application. Data file location: $piFile. Begin loading...")
 
-    logger.info("Starting Application. Data file location: $piFile. Finder: $finder")
+    val piFinder = NativePiFinder()
+    piFinder.init(piFile, 104857600)
+
     embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = {
-        configureRouting(piFile, finder)
+        configureRouting(FindInPi(piFinder))
         configureSerialization()
     })
         .start(wait = true)
-}
-
-enum class PiFinderType(val finderClass: KClass<out PiFinder>) {
-    KOTLIN(KPiFinder::class),
-    NATIVE(NativePiFinder::class)
 }
 
 fun readEnv(name: String): String {

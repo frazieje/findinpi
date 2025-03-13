@@ -10,14 +10,9 @@ public class NativePiFinder implements PiFinder {
         System.loadLibrary("bigfind");
     }
 
-    @NotNull
     @Override
-    public native SearchResult search(
-            @NotNull String dataFilePath,
-            @NotNull String searchText,
-            long bufferSize,
-            long offset,
-            long length,
-            @NotNull Function0<Boolean> isActive
-    );
+    public native void init(@NotNull String dataFilePath, long readBufferSize);
+
+    @Override
+    public native @NotNull SearchResult search(@NotNull String searchText);
 }

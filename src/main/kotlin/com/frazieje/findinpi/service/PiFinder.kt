@@ -3,5 +3,6 @@ package com.frazieje.findinpi.service
 import com.frazieje.findinpi.model.SearchResult
 
 interface PiFinder {
-    fun search(dataFilePath: String, searchText: String, bufferSize: Long, offset: Long, length: Long, isActive: () -> Boolean): SearchResult
+    fun init(dataFilePath: String, readBufferSize: Long)
+    fun search(searchText: String): SearchResult
 }
