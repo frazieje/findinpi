@@ -1,0 +1,15 @@
+services:
+  findinpi:
+    build: .
+    ports:
+      - 8080:8080
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10M"
+        max-file: "5"
+    environment:
+      - PI_DATA=/mnt/pidata/Pi100B.txt
+      - PI_FINDER=native
+    volumes:
+      - /mnt/pidata:/mnt/pidata

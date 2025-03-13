@@ -10,7 +10,6 @@ plugins {
 }
 
 group = "com.frazieje"
-version = "0.0.1"
 
 application {
     mainClass.set("com.frazieje.findinpi.ApplicationKt")
