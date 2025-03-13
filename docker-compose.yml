@@ -10,6 +10,5 @@ services:
         max-file: "5"
     environment:
       - PI_DATA=/mnt/pidata/Pi100B.txt
-      - PI_FINDER=native
     volumes:
       - /mnt/pidata:/mnt/pidata
