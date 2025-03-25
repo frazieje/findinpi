@@ -3,177 +3,214 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
+#include "femto.h"
 #include "com_frazieje_findinpi_service_NativePiFinder.h"
 
-#define  READALL_OK          0  /* Success */
-#define  READALL_INVALID    -1  /* Invalid parameters */
-#define  READALL_ERROR      -2  /* Stream error */
-#define  READALL_TOOMUCH    -3  /* Too much input */
-#define  READALL_NOMEM      -4  /* Out of memory */
+femto_server_t femto_server;
+char *femto_index_path;
 
-int64_t MAX(int64_t a, int64_t b) { return((a) > (b) ? a : b); }
+static int femto_do_count_request(char *search_pattern, char **result) {
+    int rc;
+    femto_request_t *femto_request = NULL;
+    struct timespec start;
+    struct timespec now;
 
-int64_t MIN(int64_t a, int64_t b) { return((a) < (b) ? a : b); }
+    printf("Starting FEMTO request for index %s. Counting occurrences of pattern '%s'\n", femto_index_path, search_pattern);
 
-char *data;
-size_t data_size;
+    size_t pattern_len = strlen(search_pattern);
 
-/* This function returns one of the READALL_ constants above.
-   If the return value is zero == READALL_OK, then:
-     (*dataptr) points to a dynamically allocated buffer, with
-     (*sizeptr) chars read from the file.
-     The buffer is allocated for one extra char, which is NUL,
-     and automatically appended after the data.
-   Initial values of (*dataptr) and (*sizeptr) are ignored.
-*/
-int readall(FILE *in, char **dataptr, size_t *sizeptr, int chunk_size)
-{
-    char  *data = NULL, *temp;
-    size_t size = 0;
-    size_t used = 0;
-    size_t n;
+    const char req_type[] = "find_strings ";
 
-    /* None of the parameters can be NULL. */
-    if (in == NULL || dataptr == NULL || sizeptr == NULL)
-        return READALL_INVALID;
+    size_t req_type_len = strlen(req_type);
 
-    /* A read error already occurred? */
-    if (ferror(in))
-        return READALL_ERROR;
+    char req_pattern[req_type_len + pattern_len + 1];
 
-    while (1) {
+    strcpy(req_pattern, req_type);
+    strcat(req_pattern, search_pattern);
 
-        if (used + chunk_size + 1 > size) {
-            size = used + chunk_size + 1;
+    printf("Sending FEMTO request: %s\n", req_pattern);
 
-            /* Overflow check. Some ANSI C compilers
-               may optimize this away, though. */
-            if (size <= used) {
-                free(data);
-                return READALL_TOOMUCH;
-            }
+    rc = femto_create_generic_request(
+        &femto_request,
+        &femto_server,
+        femto_index_path,
+        req_pattern
+    );
 
-            temp = realloc(data, size);
-            if (temp == NULL) {
-                free(data);
-                return READALL_NOMEM;
-            }
-            data = temp;
-        }
-
-        n = fread(data + used, 1, chunk_size, in);
-        if (n == 0)
-            break;
-
-        used += n;
+    if(rc != 0) {
+        perror("femto_create_generic_request");
+        return rc;
     }
 
-    if (ferror(in)) {
-        free(data);
-        return READALL_ERROR;
+    rc = femto_begin_request(&femto_server, femto_request);
+    if(rc != 0) {
+        perror("femto_begin_request");
+        return rc;
     }
 
-    temp = realloc(data, used + 1);
-    if (temp == NULL) {
-        free(data);
-        return READALL_NOMEM;
+    femto_wait_request(&femto_server, femto_request);
+
+    char* response;
+
+    rc = femto_response_for_generic_request(femto_request, &femto_server, &response);
+    if(rc != 0) {
+        perror("femto_response_for_generic_request");
+        return rc;
     }
-    data = temp;
-    data[used] = '\0';
 
-    *dataptr = data;
-    *sizeptr = used;
+    *result = response;
 
-    return READALL_OK;
+    printf("FEMTO sending result %s\n", *result);
+
+    femto_destroy_request(femto_request);
+
+    return rc;
 }
 
-unsigned long long searchtext(char *str) {
+static int femto_do_request(char *search_pattern, int maxResultCount, char **result) {
+    int rc;
+    femto_request_t *femto_request = NULL;
+    struct timespec start;
+    struct timespec now;
 
-    unsigned long long find_result = -1;
-    char *loc;
+    printf("Starting FEMTO request for index %s. Searching for pattern '%s'\n", femto_index_path, search_pattern);
 
-    loc = strstr(data, str);
-    if(loc != NULL) {
-        find_result = loc - data;
+    size_t pattern_len = strlen(search_pattern);
+
+    const char req_type[] = "find_docs";
+
+    char req_params[100];
+
+    sprintf(req_params, "%s %d 1 ", req_type, maxResultCount);
+
+    size_t req_params_len = strlen(req_params);
+
+    char req_pattern[req_params_len + pattern_len + 1];
+
+    strcpy(req_pattern, req_params);
+    strcat(req_pattern, search_pattern);
+
+    printf("Sending FEMTO request: %s\n", req_pattern);
+
+    rc = femto_create_generic_request(
+        &femto_request,
+        &femto_server,
+        femto_index_path,
+        req_pattern
+    );
+
+    if(rc != 0) {
+        perror("femto_create_generic_request");
+        return rc;
     }
 
-    if(find_result == -1) {
-        printf("Sorry, couldn't find a match.\n");
+    rc = femto_begin_request(&femto_server, femto_request);
+    if(rc != 0) {
+        perror("femto_begin_request");
+        return rc;
     }
 
-    return find_result;
+    femto_wait_request(&femto_server, femto_request);
+
+    char* response;
+
+    rc = femto_response_for_generic_request(femto_request, &femto_server, &response);
+    if(rc != 0) {
+        perror("femto_response_for_generic_request");
+        return rc;
+    }
+
+    *result = response;
+
+    printf("FEMTO sending result %s\n", *result);
+
+    femto_destroy_request(femto_request);
+
+    return rc;
 }
 
 JNIEXPORT void JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_init(
     JNIEnv *env,
     jobject thisObj,
-    jstring filePath,
-    jlong buffer_size
+    jstring dataFilePath
 ) {
-    FILE *fp = NULL;
-    int load_result = READALL_INVALID;
-    char *search_string, *file_path;
-    struct timeval tval_before, tval_after, tval_result;
-    int64_t elapsed;
+    femto_index_path = ((char *)((*env)->GetStringUTFChars(env, dataFilePath, 0)));
 
-    file_path = ((char *)((*env)->GetStringUTFChars(env, filePath, 0)));
-
-    if((fp = fopen(file_path, "r")) == NULL) {
-        perror("fopen");
+    const int rc = femto_start_server(&femto_server);
+    if (rc != 0) {
+        perror("femto_start_server");
         return;
     }
 
-    printf("Loading data file into main memory...\n");
-    fflush(stdout);
-
-    gettimeofday(&tval_before, NULL);
-    load_result = readall(fp, &data, &data_size, (int)buffer_size);
-    gettimeofday(&tval_after, NULL);
-    timersub(&tval_after, &tval_before, &tval_result);
-
-    elapsed = (tval_result.tv_sec*1000000 + tval_result.tv_usec) / 1000;
-    printf("Finished loading data file in %lldms. size = %lu\n", elapsed, data_size);
+    printf("Started femto server. data file: %s\n", femto_index_path);
     fflush(stdout);
 }
 
-JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_search(
-    JNIEnv * env,
+JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_countInternal(
+    JNIEnv *env,
     jobject thisObj,
     jstring searchText
 ) {
-
     char *search_string;
     unsigned long long result = -1;
-
-    unsigned char found;
 
     struct timeval tval_before, tval_after, tval_result;
     int64_t elapsed;
 
     search_string = ((char *)((*env)->GetStringUTFChars(env, searchText, 0)));
 
+    char *search_result;
+
     gettimeofday(&tval_before, NULL);
-    result = searchtext(search_string);
+    result = femto_do_count_request(search_string, &search_result);
     gettimeofday(&tval_after, NULL);
     timersub(&tval_after, &tval_before, &tval_result);
 
     elapsed = (tval_result.tv_sec*1000000 + tval_result.tv_usec) / 1000;
 
-    if (result == -1) {
-        found = (unsigned char)0;
-    } else {
-        found = (unsigned char)1;
-    }
+    printf("count result returned in %lldms\n", elapsed);
 
-    if (found) {
-        printf("%llu location found in %lldms", result, elapsed);
-    }
-
-    jclass cls_search_result = (*env)->FindClass(env, "com/frazieje/findinpi/model/SearchResult");
-    jmethodID cnstr_search_result = (*env)->GetMethodID(env, cls_search_result, "<init>", "(ZJJLjava/lang/String;)V");
-    jobject obj_result = (*env)->NewObject(env, cls_search_result, cnstr_search_result, found, result, elapsed, NULL);
+    jclass cls_native_result = (*env)->FindClass(env, "com/frazieje/findinpi/service/NativeResult");
+    jmethodID cnstr_native_result = (*env)->GetMethodID(env, cls_native_result, "<init>", "(Ljava/lang/String;J)V");
+    jstring native_result_str = (*env)->NewStringUTF(env, search_result);
+    jobject obj_result = (*env)->NewObject(env, cls_native_result, cnstr_native_result, native_result_str, elapsed);
 
     fflush(stdout);
+    free(search_result);
+    return obj_result;
+}
 
+JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_searchInternal(
+    JNIEnv *env,
+    jobject thisObj,
+    jstring searchText,
+    jint maxResultCount
+) {
+    char *search_string;
+    unsigned long long result = -1;
+
+    struct timeval tval_before, tval_after, tval_result;
+    int64_t elapsed;
+
+    search_string = ((char *)((*env)->GetStringUTFChars(env, searchText, 0)));
+
+    char *search_result;
+
+    gettimeofday(&tval_before, NULL);
+    result = femto_do_request(search_string, (int)maxResultCount, &search_result);
+    gettimeofday(&tval_after, NULL);
+    timersub(&tval_after, &tval_before, &tval_result);
+
+    elapsed = (tval_result.tv_sec*1000000 + tval_result.tv_usec) / 1000;
+
+    printf("search result returned in %lldms\n", elapsed);
+
+    jclass cls_native_result = (*env)->FindClass(env, "com/frazieje/findinpi/service/NativeResult");
+    jmethodID cnstr_native_result = (*env)->GetMethodID(env, cls_native_result, "<init>", "(Ljava/lang/String;J)V");
+    jstring native_result_str = (*env)->NewStringUTF(env, search_result);
+    jobject obj_result = (*env)->NewObject(env, cls_native_result, cnstr_native_result, native_result_str, elapsed);
+
+    fflush(stdout);
+    free(search_result);
     return obj_result;
 }

@@ -35,13 +35,12 @@ fun main(args: Array<String>) {
     logger.info("Starting Application. Data file location: $piFile. Begin loading...")
 
     val piFinder = NativePiFinder()
-    piFinder.init(piFile, 104857600)
+    piFinder.init(piFile)
 
     embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = {
         configureRouting(FindInPi(piFinder))
         configureSerialization()
-    })
-        .start(wait = true)
+    }).start(wait = true)
 }
 
 fun readEnv(name: String): String {

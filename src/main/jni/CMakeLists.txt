@@ -10,9 +10,8 @@ if (JNI_FOUND)
     message (STATUS "JNI_LIBRARIES=${JNI_LIBRARIES}")
 endif ()
 
-message (STATUS "dir ${NATIVE_BUILD_DIR}")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${NATIVE_BUILD_DIR}/libs)
 
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${NATIVE_BUILD_DIR}/lib)
-
-include_directories(${JNI_INCLUDE_DIRS} ${NATIVE_BUILD_DIR})
+include_directories(${JNI_INCLUDE_DIRS} ${NATIVE_BUILD_DIR} ${NATIVE_INCLUDE_DIR})
 add_library(bigfind SHARED main.c)
+target_link_libraries(bigfind ${NATIVE_LIBS_DIR}/libfemto.a ${NATIVE_LIBS_DIR}/libfemto_util.a pthread)

@@ -1,5 +1,3 @@
-import org.gradle.internal.os.OperatingSystem
-
 val ktor_version: String by project
 val kotlin_version: String by project
 val logback_version: String by project
@@ -21,12 +19,47 @@ application {
 val nativeBuildDir = project.layout.buildDirectory.dir("native").get().asFile
 val nativeSourceDir = project.layout.projectDirectory.dir("src/main/jni").asFile
 
+val externalSourceDir = project.layout.projectDirectory.dir("external/femto").asFile
+
 distributions {
     main {
         contents {
-            from(File(nativeBuildDir, "lib"))
+            from(File(nativeBuildDir, "libs"))
         }
     }
+}
+
+val generateExternalBuildSystemTask = tasks.create<Exec>("generateExternalBuildSystem") {
+    dependsOn(tasks.getByName("compileJava"))
+    workingDir = externalSourceDir
+    commandLine = listOf("sh", "autogen.sh")
+}
+
+val configureExternalBuildSystemTask = tasks.create<Exec>("configureExternalBuildSystem") {
+    dependsOn(generateExternalBuildSystemTask)
+    workingDir = externalSourceDir
+    commandLine = listOf("./configure")
+}
+
+val buildExternalTask = tasks.create<Exec>("buildExternal") {
+    dependsOn(configureExternalBuildSystemTask)
+    workingDir = externalSourceDir
+    commandLine = listOf("make", "-j${Runtime.getRuntime().availableProcessors()}")
+}
+
+val copyExternalIncludes = tasks.create<Copy>("copyExternalIncludes") {
+    dependsOn(buildExternalTask)
+    from(file(File(externalSourceDir, "src/main/femto.h")))
+    into(File(nativeBuildDir, "include"))
+}
+
+val copyExternalLibsTask = tasks.create<Copy>("copyExternalLibs") {
+    dependsOn(copyExternalIncludes)
+    from(
+        fileTree(File(externalSourceDir, "src/main/.libs")).filter { it.extension == "a" },
+        fileTree(File(externalSourceDir, "src/utils/.libs")).filter { it.extension == "a" }
+    )
+    into(File(nativeBuildDir, "libs"))
 }
 
 val generateNativeBuildSystemTask = tasks.create<Exec>("generateNativeBuildSystem") {
@@ -39,11 +72,20 @@ val generateNativeBuildSystemTask = tasks.create<Exec>("generateNativeBuildSyste
 //        "windows"
 //    }
     workingDir = nativeSourceDir
-    commandLine = listOf("cmake", "-S", ".", "-B", nativeBuildDir.absolutePath, "-DNATIVE_BUILD_DIR=${nativeBuildDir.absolutePath}")
+    commandLine = listOf(
+        "cmake",
+        "-S",
+        ".",
+        "-B",
+        nativeBuildDir.absolutePath,
+        "-DNATIVE_BUILD_DIR=${nativeBuildDir.absolutePath}",
+        "-DNATIVE_LIBS_DIR=${nativeBuildDir.absolutePath}/libs",
+        "-DNATIVE_INCLUDE_DIR=${nativeBuildDir.absolutePath}/include"
+    )
 }
 
 val buildNativeTask = tasks.create<Exec>("buildNative") {
-    dependsOn(generateNativeBuildSystemTask)
+    dependsOn(copyExternalLibsTask, generateNativeBuildSystemTask)
     workingDir = nativeSourceDir
     commandLine = listOf("cmake", "--build", nativeBuildDir.absolutePath, "--target", "all")
 }
