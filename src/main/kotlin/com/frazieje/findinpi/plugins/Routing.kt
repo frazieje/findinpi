@@ -9,7 +9,7 @@ import io.ktor.server.routing.*
 
 fun Application.configureRouting(findInPi: FindInPi) {
     routing {
-        post("/search") {
+        post("/api/search") {
             val req = call.receive<SearchRequest>()
             call.respond(findInPi.find(req.searchText, req.maxResultCount))
         }
