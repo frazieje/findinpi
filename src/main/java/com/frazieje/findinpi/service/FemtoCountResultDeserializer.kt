@@ -12,7 +12,11 @@ class FemtoCountResultDeserializer : JsonDeserializer<FemtoCountResult> {
         context: JsonDeserializationContext
     ): FemtoCountResult {
         val matchesArray = json.asJsonObject.get("matches").asJsonArray
-        val rangeArray = matchesArray.get(0).asJsonObject.get("range").asJsonArray
-        return FemtoCountResult(rangeArray.get(1).asLong - rangeArray.get(0).asLong)
+        return FemtoCountResult(
+            if (matchesArray.size() > 0) {
+                val rangeArray = matchesArray.get(0).asJsonObject.get("range").asJsonArray
+                rangeArray.get(1).asLong - rangeArray.get(0).asLong + 1
+            } else 0
+        )
     }
 }

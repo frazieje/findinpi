@@ -6,6 +6,7 @@ import com.google.gson.GsonBuilder;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class NativePiFinder implements PiFinder {
 
@@ -27,13 +28,22 @@ public class NativePiFinder implements PiFinder {
         var nativeResult = countInternal(searchText);
         var countTime = nativeResult.getSearchTimeMs();
         var countResult = gson.fromJson(nativeResult.getFemtoResultJson(), FemtoCountResult.class);
-        nativeResult = searchInternal(searchText, maxResultCount);
-        var searchResult = gson.fromJson(nativeResult.getFemtoResultJson(), FemtoSearchResult.class);
-        return new SearchResult(
+        if (countResult.getCount() > 0) {
+            nativeResult = searchInternal(searchText, maxResultCount);
+            var searchResult = gson.fromJson(nativeResult.getFemtoResultJson(), FemtoSearchResult.class);
+            return new SearchResult(
                 countResult.getCount(),
                 searchResult.getOffsets(),
                 countTime + nativeResult.getSearchTimeMs(),
                 null
-        );
+            );
+        } else {
+            return new SearchResult(
+            0,
+                Collections.emptyList(),
+                countTime,
+                null
+            );
+        }
     }
 }
