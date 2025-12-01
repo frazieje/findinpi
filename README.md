@@ -1,6 +1,11 @@
 # FindInPi
 A Kotlin HTTP API to searching pi for specific strings of numbers. Includes a pure kotlin and C/JNI/kotlin impelemntation.
 
+findinpi is the engine behind [Pi Search](https://pi.frazieje.com).
+
+## Design
+findinpi can search for all occurences of a pattern _P_ of length _m_ in text _T_ of length _n_, and offers a search perfomance with time complexity O(m). Note that the time complexity is proportional to the length of the _search_ pattern, not the length of the _text you are searching_. To achieve this the native implementation uses a special fm-index [(see the paper here)](https://github.com/femto-dev/femto/blob/main/doc/femto.pdf). 
+
 ## Why?
 Pi is probably the most famous irrational number. As an irrational number, when pi is represented as a decimal it is a never ending, never permanently repeating, seemingly random stream of numbers.
 
