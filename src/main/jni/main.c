@@ -3,11 +3,97 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
+#include "divsufsort.h"
 #include "femto.h"
 #include "com_frazieje_findinpi_service_NativePiFinder.h"
 
+//femto globals
 femto_server_t femto_server;
 char *femto_index_path;
+
+//divsufsort globals
+sauchar_t *data;
+size_t size;
+saidx_t *SA;
+
+/* Size of each input chunk to be
+   read and allocate for. */
+#ifndef  CHUNK_SIZE
+#define  CHUNK_SIZE  2097152
+#endif
+
+#define  READALL_OK          0  /* Success */
+#define  READALL_INVALID    -1  /* Invalid parameters */
+#define  READALL_ERROR      -2  /* Stream error */
+#define  READALL_TOOMUCH    -3  /* Too much input */
+#define  READALL_NOMEM      -4  /* Out of memory */
+
+/* This function returns one of the READALL_ constants above.
+   If the return value is zero == READALL_OK, then:
+     (*dataptr) points to a dynamically allocated buffer, with
+     (*sizeptr) chars read from the file.
+     The buffer is allocated for one extra char, which is NUL,
+     and automatically appended after the data.
+   Initial values of (*dataptr) and (*sizeptr) are ignored.
+*/
+int readall(FILE *in, unsigned char **dataptr, size_t *sizeptr)
+{
+    unsigned char  *data = NULL, *temp;
+    size_t size = 0;
+    size_t used = 0;
+    size_t n;
+
+    /* None of the parameters can be NULL. */
+    if (in == NULL || dataptr == NULL || sizeptr == NULL)
+        return READALL_INVALID;
+
+    /* A read error already occurred? */
+    if (ferror(in))
+        return READALL_ERROR;
+
+    while (1) {
+        if (used + CHUNK_SIZE + 1 > size) {
+            size = used + CHUNK_SIZE + 1;
+            /* Overflow check. Some ANSI C compilers
+               may optimize this away, though. */
+            if (size <= used) {
+                free(data);
+                return READALL_TOOMUCH;
+            }
+            temp = realloc(data, size);
+            if (temp == NULL) {
+                free(data);
+                return READALL_NOMEM;
+            }
+            data = temp;
+        }
+
+        n = fread(data + used, 1, CHUNK_SIZE, in);
+        if (n == 0)
+            break;
+
+        used += n;
+    }
+
+    if (ferror(in)) {
+        free(data);
+        return READALL_ERROR;
+    }
+
+    temp = realloc(data, used + 1);
+    if (temp == NULL) {
+        free(data);
+        return READALL_NOMEM;
+    }
+    data = temp;
+    data[used] = '\0';
+
+    *dataptr = data;
+    *sizeptr = used;
+
+    return READALL_OK;
+}
+
 
 static int femto_do_count_request(char *search_pattern, char **result) {
     int rc;
@@ -132,9 +218,68 @@ static int femto_do_request(char *search_pattern, int maxResultCount, char **res
 JNIEXPORT void JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_init(
     JNIEnv *env,
     jobject thisObj,
-    jstring dataFilePath
+    jstring dataFilePath,
+    jstring suffixArrayFilePath,
+    jstring fmIndexFilePath
 ) {
-    femto_index_path = ((char *)((*env)->GetStringUTFChars(env, dataFilePath, 0)));
+    FILE *fp = NULL;
+    int load_result = READALL_INVALID;
+    struct timeval tval_before, tval_after, tval_result;
+    int64_t elapsed;
+
+    char *data_file_path = ((char *)((*env)->GetStringUTFChars(env, dataFilePath, 0)));
+
+    if((fp = fopen(data_file_path, "r")) == NULL) {
+        perror("fopen");
+        return READALL_INVALID;
+    }
+
+    (*env)->ReleaseStringUTFChars(env, dataFilePath, data_file_path);
+
+    printf("Loading data file into main memory...\n");
+    fflush(stdout);
+
+    //load data file into memory
+    gettimeofday(&tval_before, NULL);
+    load_result = readall(fp, &data, &size);
+    gettimeofday(&tval_after, NULL);
+    timersub(&tval_after, &tval_before, &tval_result);
+
+    fclose(fp);
+
+    elapsed = (tval_result.tv_sec*1000000 + tval_result.tv_usec) / 1000;
+
+    if (load_result != READALL_OK) {
+        perror("Error");
+        return;
+    }
+
+    printf("Finished loading data file in %ldms. size = %lu\n", elapsed, size);
+
+    char *suffix_array_file_path = ((char *)((*env)->GetStringUTFChars(env, suffixArrayFilePath, 0)));
+
+    //load or calculate the suffix array
+    if((fp = fopen(suffix_array_file_path, "r")) == NULL) {
+        perror("fopen");
+        goto done;
+    }
+
+    (*env)->ReleaseStringUTFChars(env, suffixArrayFilePath, suffix_array_file_path);
+
+    printf("Reading suffix array from %s...\n", argv[2]);
+    fflush(stdout);
+    gettimeofday(&tval_before, NULL);
+    size_t b_read = fread(SA, sizeof(saidx_t), size, fp);
+    gettimeofday(&tval_after, NULL);
+    timersub(&tval_after, &tval_before, &tval_result);
+
+    fclose(fp);
+
+    elapsed = (tval_result.tv_sec*1000000 + tval_result.tv_usec) / 1000;
+
+    printf("Finished reading %ld suffix array in %ldms\n", b_read, elapsed);
+
+    femto_index_path = ((char *)((*env)->GetStringUTFChars(env, fmIndexFilePath, 0)));
 
     const int rc = femto_start_server(&femto_server);
     if (rc != 0) {
@@ -143,6 +288,7 @@ JNIEXPORT void JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_init(
     }
 
     printf("Started femto server. data file: %s\n", femto_index_path);
+
     fflush(stdout);
 }
 
@@ -163,6 +309,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_coun
 
     gettimeofday(&tval_before, NULL);
     result = femto_do_count_request(search_string, &search_result);
+    (*env)->ReleaseStringUTFChars(env, searchText, search_string);
     gettimeofday(&tval_after, NULL);
     timersub(&tval_after, &tval_before, &tval_result);
 
@@ -183,8 +330,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_coun
 JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_searchInternal(
     JNIEnv *env,
     jobject thisObj,
-    jstring searchText,
-    jint maxResultCount
+    jstring searchText
 ) {
     char *search_string;
     unsigned long long result = -1;
@@ -194,10 +340,22 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
 
     search_string = ((char *)((*env)->GetStringUTFChars(env, searchText, 0)));
 
+    int search_string_len = strlen(search_string);
+
+    if (search_string_len <= 5) {
+        // search linearly using strstr
+    } else if (search_string_len <= 7) {
+        // search using libdivsufsort
+    } else { // length >= 8
+        // search using femto
+    }
+
+    (*env)->ReleaseStringUTFChars(env, searchText, search_string);
+
     char *search_result;
 
     gettimeofday(&tval_before, NULL);
-    result = femto_do_request(search_string, (int)maxResultCount, &search_result);
+    result = femto_do_request(search_string, 20, &search_result);
     gettimeofday(&tval_after, NULL);
     timersub(&tval_after, &tval_before, &tval_result);
 

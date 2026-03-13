@@ -6,12 +6,16 @@ import org.slf4j.LoggerFactory
 
 class FindInPi(private val piFinder: PiFinder) {
     private val logger = LoggerFactory.getLogger(javaClass)
-    suspend fun find(searchText: String, maxResultCount: Int): SearchResult = withContext(Dispatchers.IO) {
+    private val regex = Regex("""^[.0-9]{1,100}$""")
+    suspend fun find(searchText: String): SearchResult = withContext(Dispatchers.IO) {
         logger.debug(
-            "find called - pattern: {}, maxResultCount: {}",
+            "find called - pattern: {}",
             searchText,
-            maxResultCount
         )
-        piFinder.search(searchText, if (maxResultCount > 101) 101 else maxResultCount)
+        if (!regex.matches(searchText)) {
+            SearchResult(-1, emptyList(), 0, "Not a valid search term")
+        } else {
+            piFinder.search(searchText)
+        }
     }
 }

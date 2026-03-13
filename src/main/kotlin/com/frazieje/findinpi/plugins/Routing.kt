@@ -11,7 +11,7 @@ fun Application.configureRouting(findInPi: FindInPi) {
     routing {
         post("/api/search") {
             val req = call.receive<SearchRequest>()
-            call.respond(findInPi.find(req.searchText, req.maxResultCount))
+            call.respond(findInPi.find(req.searchText))
         }
     }
 }

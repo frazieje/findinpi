@@ -16,19 +16,19 @@ public class NativePiFinder implements PiFinder {
     private final Gson gson = new GsonBuilder().registerTypeAdapter(FemtoSearchResult.class, new FemtoSearchResultDeserializer()).registerTypeAdapter(FemtoCountResult.class, new FemtoCountResultDeserializer()).create();
 
     @Override
-    public native void init(@NotNull String dataFilePath);
+    public native void init(@NotNull String dataFilePath, @NotNull String suffixArrayFilePath, @NotNull String fmIndexFilePath);
 
-    private native NativeResult searchInternal(String searchText, int maxResultCount);
+    private native NativeResult searchInternal(String searchText);
 
     private native NativeResult countInternal(String searchText);
 
     @Override
-    public @NotNull SearchResult search(@NotNull String searchText, int maxResultCount) {
+    public @NotNull SearchResult search(@NotNull String searchText) {
         var nativeResult = countInternal(searchText);
         var countTime = nativeResult.getSearchTimeMs();
         var countResult = gson.fromJson(nativeResult.getFemtoResultJson(), FemtoCountResult.class);
         if (countResult.getCount() > 0) {
-            nativeResult = searchInternal(searchText, maxResultCount);
+            nativeResult = searchInternal(searchText);
             var searchResult = gson.fromJson(nativeResult.getFemtoResultJson(), FemtoSearchResult.class);
             return new SearchResult(
                 countResult.getCount(),

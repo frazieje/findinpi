@@ -14,10 +14,7 @@ class SearchRequestDeserializer : JsonDeserializer<SearchRequest> {
     ): SearchRequest {
         val searchRequestObj = json.asJsonObject
         return SearchRequest(
-            searchRequestObj.get(SearchRequest::searchText.name).asString,
-            if (searchRequestObj.has(SearchRequest::maxResultCount.name)) {
-                searchRequestObj.get(SearchRequest::maxResultCount.name).asInt
-            } else 1
+            searchRequestObj.get(SearchRequest::searchText.name).asString
         )
     }
 }

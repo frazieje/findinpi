@@ -4,6 +4,7 @@ import com.frazieje.findinpi.plugins.configureRouting
 import com.frazieje.findinpi.plugins.configureSerialization
 import com.frazieje.findinpi.service.FindInPi
 import com.frazieje.findinpi.service.NativePiFinder
+import com.frazieje.findinpi.service.PiFinder
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import org.slf4j.LoggerFactory
@@ -11,20 +12,31 @@ import java.io.File
 
 fun main(args: Array<String>) {
     val logger = LoggerFactory.getLogger("FindInPi")
-    val path = if (args.isNotEmpty() && args[0].isNotBlank()) {
-        args[0].trim()
+
+    fun getArg(argNum: Int, envVar: String) = if (args.isNotEmpty() && args[0].isNotBlank()) {
+        args[argNum].trim()
     } else {
-        val envPath = readEnv("PI_DATA")
-        logger.debug("ENV_PATH value $envPath")
+        val envPath = readEnv(envVar)
+        logger.debug("$envVar value $envPath")
         envPath
     }
 
-    val piFile = try {
+    val dataFilePath = getArg(0, "PI_DATA")
+
+    val suffixArrayPath = getArg(1, "SUFFIX_ARRAY")
+
+    val fmIndexPath = getArg(2, "FM_INDEX")
+
+    fun checkFile(path: String, backup: (() -> String)? = null) = try {
         val file = File(path)
         file.reader().use { reader -> reader.read() }
         file.absolutePath
     } catch (e: Exception) {
-        logger.warn("Could not read data file, using builtin 1M pi data")
+        logger.warn("Could not read file $path")
+        backup?.invoke()
+    }!!
+
+    val dataFile = checkFile(dataFilePath) {
         try {
             Thread.currentThread().contextClassLoader.getResource("Pi1M.txt")!!.file
         } catch (e2: Exception) {
@@ -32,10 +44,13 @@ fun main(args: Array<String>) {
         }
     }
 
-    logger.info("Starting Application. Data file location: $piFile. Begin loading...")
+    val suffixArrayFile = checkFile(suffixArrayPath)
+    val fmIndexFile = checkFile(fmIndexPath)
 
-    val piFinder = NativePiFinder()
-    piFinder.init(piFile)
+    logger.info("Starting Application. Data file location: $dataFile, suffix array file: $suffixArrayFile, fm-index file: $fmIndexFile. Begin loading...")
+
+    val piFinder: PiFinder = NativePiFinder()
+    piFinder.init(dataFilePath, suffixArrayFile, fmIndexFile)
 
     embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = {
         configureRouting(FindInPi(piFinder))
