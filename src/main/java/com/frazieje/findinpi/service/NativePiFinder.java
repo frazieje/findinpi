@@ -16,7 +16,7 @@ public class NativePiFinder implements PiFinder {
     private final Gson gson = new GsonBuilder().registerTypeAdapter(NativeSearchResult.class, new NativeSearchResultDeserializer()).registerTypeAdapter(NativeCountResult.class, new NativeCountResultDeserializer()).create();
 
     @Override
-    public native void init(@NotNull String dataFilePath, @NotNull String suffixArrayFilePath, @NotNull String fmIndexFilePath);
+    public native void init(@NotNull String dataFilePath, @NotNull String suffixArrayFilePath, @NotNull String fmIndexFilePath, @NotNull String fullDataFilePath);
 
     private native NativeResult searchInternal(String searchText);
 
