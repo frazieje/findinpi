@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <errno.h>
+#include <ctype.h>
 #include <sys/time.h>
 #include <time.h>
 #include "divsufsort.h"
@@ -94,6 +98,27 @@ int readall(FILE *in, unsigned char **dataptr, size_t *sizeptr)
     return READALL_OK;
 }
 
+ssize_t read_n_at(int fd, off_t offset, void *buf, size_t n) {
+    size_t total = 0;
+    char *p = (char *)buf;
+
+    while (total < n) {
+        ssize_t r = pread(fd, p + total, n - total, offset + total);
+        if (r == 0) {
+            // EOF before reading n bytes
+            break;
+        }
+        if (r < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return -1;
+        }
+        total += (size_t)r;
+    }
+
+    return (ssize_t)total;
+}
 
 static int femto_do_count_request(char *search_pattern, char **result) {
     int rc;
@@ -353,6 +378,81 @@ int searchtext(char *data, char *str, unsigned long long *result) {
     return find_result;
 }
 
+int extract_min_uint64(const char *s, unsigned long long *out_min) {
+    if (s == NULL || out_min == NULL) {
+        return 0;
+    }
+    // Find opening bracket
+    while (*s && *s != '[') {
+        s++;
+    }
+    if (*s != '[') {
+        return 0;
+    }
+    s++; // move past '['
+
+    int found_any = 0;
+    unsigned long long min_value = 0;
+
+    for (;;) {
+        // Skip whitespace
+        while (isspace((unsigned char)*s)) {
+            s++;
+        }
+
+        // End of list?
+        if (*s == ']') {
+            break;
+        }
+
+        // Parse one number
+        errno = 0;
+        char *endptr = NULL;
+        unsigned long long value = strtoull(s, &endptr, 10);
+
+        // No digits parsed
+        if (endptr == s) {
+            return false;
+        }
+
+        // Overflow
+        if (errno == ERANGE) {
+            return false;
+        }
+
+        unsigned long long v = value;
+
+        if (!found_any || v < min_value) {
+            min_value = v;
+            found_any = 1;
+        }
+
+        s = endptr;
+
+        // Skip whitespace after number
+        while (isspace((unsigned char)*s)) {
+            s++;
+        }
+
+        if (*s == ',') {
+            s++;   // move to next number
+            continue;
+        } else if (*s == ']') {
+            break;
+        } else {
+            // Unexpected character
+            return 0;
+        }
+    }
+
+    if (!found_any) {
+        return 0;
+    }
+
+    *out_min = min_value;
+    return 1;
+}
+
 JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_searchInternal(
     JNIEnv *env,
     jobject thisObj,
@@ -406,6 +506,16 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         strncat(search_result, json_suffix, json_suffix_len + 1);
     } else { // length >= 8
         result = femto_do_request(search_string, 1500 /* refactor to parameter/argument */, &search_result);
+        unsigned long long min_value;
+        extract_min_uint64(search_result, &min_value);
+        free(search_result);
+        sprintf(offset_result, "%d", min_value);
+        int offset_result_len = strlen(offset_result);
+        int search_result_len = json_prefix_len + offset_result_len + json_suffix_len + 1;
+        search_result = malloc(search_result_len);
+        strncpy(search_result, json_prefix, search_result_len);
+        strncat(search_result, offset_result, offset_result_len + 1);
+        strncat(search_result, json_suffix, json_suffix_len + 1);
     }
 
     (*env)->ReleaseStringUTFChars(env, searchText, search_string);
