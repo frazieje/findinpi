@@ -382,6 +382,12 @@ int extract_min_uint64(const char *s, unsigned long long *out_min) {
     if (s == NULL || out_min == NULL) {
         return 0;
     }
+
+    char pattern[] = "\"offsets\":[";
+    const char *p = strstr(s, pattern);
+
+    s = p;
+
     // Find opening bracket
     while (*s && *s != '[') {
         s++;
