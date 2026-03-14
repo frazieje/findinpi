@@ -257,6 +257,7 @@ JNIEXPORT void JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_init(
 
     char *full_path = ((char *)((*env)->GetStringUTFChars(env, fullDataFilePath, 0)));
     int full_path_len = strlen(full_path);
+    full_data_file_path = (char *)malloc(full_path_len + 1);
     strncpy(full_data_file_path, full_path, full_path_len + 1);
     (*env)->ReleaseStringUTFChars(env, fullDataFilePath, full_path);
 
