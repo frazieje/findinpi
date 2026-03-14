@@ -534,9 +534,10 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     if (!found) { // length >= 8
         printf("using fm index\n");
         fflush(stdout);
-        result = femto_do_request(search_string, 1500 /* refactor to parameter/argument */, &search_result);
+        femto_do_request(search_string, 1500 /* refactor to parameter/argument */, &search_result);
         unsigned long long min_value;
         extract_min_uint64(search_result, &min_value);
+        result = min_value;
         free(search_result);
         sprintf(offset_result, "%d", min_value);
         int offset_result_len = strlen(offset_result);
