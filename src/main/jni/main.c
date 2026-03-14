@@ -549,7 +549,6 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     FILE *fp = NULL;
     if((fp = fopen(full_data_file_path, "r")) == NULL) {
         perror("fopen");
-        return;
     }
     char pibuf[64];
     read_n_at(fileno(fp), result - 16, pibuf, 64);
