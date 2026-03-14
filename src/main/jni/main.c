@@ -231,7 +231,7 @@ JNIEXPORT void JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_init(
 
     if((fp = fopen(data_file_path, "r")) == NULL) {
         perror("fopen");
-        return READALL_INVALID;
+        return;
     }
 
     (*env)->ReleaseStringUTFChars(env, dataFilePath, data_file_path);
@@ -261,13 +261,14 @@ JNIEXPORT void JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_init(
     //load or calculate the suffix array
     if((fp = fopen(suffix_array_file_path, "r")) == NULL) {
         perror("fopen");
-        goto done;
+        return;
     }
+
+    printf("Reading suffix array from %s...\n", suffix_array_file_path);
+    fflush(stdout);
 
     (*env)->ReleaseStringUTFChars(env, suffixArrayFilePath, suffix_array_file_path);
 
-    printf("Reading suffix array from %s...\n", argv[2]);
-    fflush(stdout);
     gettimeofday(&tval_before, NULL);
     size_t b_read = fread(SA, sizeof(saidx_t), size, fp);
     gettimeofday(&tval_after, NULL);
