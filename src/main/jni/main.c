@@ -539,7 +539,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         extract_min_uint64(search_result, &min_value);
         result = min_value;
         free(search_result);
-        sprintf(offset_result, "%d", min_value);
+        sprintf(offset_result, "%llu", min_value);
         int offset_result_len = strlen(offset_result);
         int search_result_len = json_prefix_len + offset_result_len + json_suffix_len + 1;
         search_result = malloc(search_result_len);
