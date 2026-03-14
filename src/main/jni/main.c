@@ -552,7 +552,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         return;
     }
     char pibuf[64];
-    read_n_at(full_data_file_path, result - 16, pibuf, 64);
+    read_n_at(fp, result - 16, pibuf, 64);
 
     fclose(fp);
 
