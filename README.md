@@ -21,7 +21,18 @@ This program was written for pi day 2024, and it can be used to search large pi 
 - Java 11+
 - CMake 3.x+
 
-You can build the project with gradle:
+### Installing build dependencies:
+#### Linux
+```shell
+$ sudo apt-get install cmake build-essential libssl-dev flex bison autotools-dev libtool libdivsufsort-dev
+```
+
+#### OSX (Homebrew)
+```shell
+$ brew install cmake automake libtool flex bison libdivsufsort
+```
+
+Then, build the project with gradle:
 ```shell
 $ ./gradlew build
 ```

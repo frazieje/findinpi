@@ -1,5 +1,5 @@
 FROM gradle:jdk17-noble as builder
-RUN apt-get update && apt-get install -y cmake build-essential libssl-dev flex bison autotools-dev libtool
+RUN apt-get update && apt-get install -y cmake build-essential libssl-dev flex bison autotools-dev libtool libdivsufsort-dev
 
 COPY --chown=gradle:gradle . /home/gradle/src
 WORKDIR /home/gradle/src
