@@ -412,12 +412,12 @@ int extract_min_uint64(const char *s, unsigned long long *out_min) {
 
         // No digits parsed
         if (endptr == s) {
-            return false;
+            return 0;
         }
 
         // Overflow
         if (errno == ERANGE) {
-            return false;
+            return 0;
         }
 
         unsigned long long v = value;
