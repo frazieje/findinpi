@@ -13,7 +13,7 @@ class FindInPi(private val piFinder: PiFinder) {
             searchText,
         )
         if (!regex.matches(searchText)) {
-            SearchResult(-1, emptyList(), 0, "Not a valid search term")
+            SearchResult(0, -1, "", -1, -1,"Not a valid search term")
         } else {
             piFinder.search(searchText)
         }
