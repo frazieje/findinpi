@@ -259,7 +259,7 @@ JNIEXPORT void JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_init(
     printf("Allocating %lu bytes for suffix array...\n", sizeof(saidx_t) * size);
     fflush(stdout);
 
-    saidx_t *SA = malloc(sizeof(saidx_t) * size);
+    SA = malloc(sizeof(saidx_t) * size);
     if (SA == NULL) {
         perror("malloc");
         return;
@@ -390,7 +390,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         saidx_t num_matches, offset;
         int first_match = 2147483647;
         num_matches = sa_search(data, (saidx_t)size, (sauchar_t *)search_string, (saidx_t)search_string_len, SA, (saidx_t)size, &offset);
-        printf("found %d matches using suffix array", num_matches);
+        printf("found %d matches using suffix array\n", num_matches);
         for (saidx_t i = 0; i < num_matches; i++) {
             int match = SA[offset + i];
             if (match < first_match) {
