@@ -549,7 +549,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     }
     char pibuf[64];
     int n_read = read_n_at(fileno(fp), result - 16, pibuf, 64);
-    int endchar = n_read == 64 ? n_read - 1 : n_read
+    int endchar = n_read == 64 ? n_read - 1 : n_read;
     pibuf[n_read] = '\0';
     fclose(fp);
 
