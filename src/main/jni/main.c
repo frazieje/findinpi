@@ -288,7 +288,7 @@ JNIEXPORT void JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_init(
         return;
     }
 
-    printf("Started femto server. data file: %s\n", femto_index_path);
+    printf("Started femto server... data file: %s\n", femto_index_path);
 
     fflush(stdout);
 }
