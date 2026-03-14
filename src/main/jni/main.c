@@ -548,7 +548,15 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         perror("fopen");
     }
     char pibuf[64];
-    int n_read = read_n_at(fileno(fp), result - 16, pibuf, 64);
+    int read_at;
+    int read_at_offset = 16;
+    if (result < read_at_offset) {
+        read_at = 0;
+        read_at_offset = result;
+    } else {
+        read_at = result - read_at_offset;
+    }
+    int n_read = read_n_at(fileno(fp), read_at, pibuf, 64);
     int endchar = n_read == 64 ? n_read - 1 : n_read;
     pibuf[n_read] = '\0';
     fclose(fp);
@@ -556,8 +564,10 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     printf("pi excerpt read %d, string = %s\n", n_read, pibuf);
 
     int pibuf_len = strlen(pibuf);
-    char excerpt_offset[] = "16";
-    int excerpt_offset_len = 2;
+
+    char excerpt_offset[21];
+    sprintf(excerpt_offset, "%d", read_at_offset);
+    int excerpt_offset_len = strlen(excerpt_offset);
 
     sprintf(offset_result, "%llu", result);
     int offset_result_len = strlen(offset_result);
