@@ -565,11 +565,11 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         perror("fopen");
     }
     char pibuf[64];
-    read_n_at(fileno(fp), result - 16, pibuf, 64);
+    int n_read = read_n_at(fileno(fp), result - 16, pibuf, 64);
 
     fclose(fp);
 
-    printf("pi string = %s\n", pibuf);
+    printf("pi excerpt read %d, string = %s\n", n_read, pibuf);
 
     jclass cls_native_result = (*env)->FindClass(env, "com/frazieje/findinpi/service/NativeResult");
     jmethodID cnstr_native_result = (*env)->GetMethodID(env, cls_native_result, "<init>", "(Ljava/lang/String;J)V");
