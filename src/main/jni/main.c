@@ -256,6 +256,15 @@ JNIEXPORT void JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_init(
 
     printf("Finished loading data file in %ldms. size = %lu\n", elapsed, size);
 
+    printf("Allocating %lu bytes for suffix array...\n", sizeof(saidx_t) * size);
+    fflush(stdout);
+
+    saidx_t *SA = malloc(sizeof(saidx_t) * size);
+    if (SA == NULL) {
+        perror("malloc");
+        return;
+    }
+
     char *suffix_array_file_path = ((char *)((*env)->GetStringUTFChars(env, suffixArrayFilePath, 0)));
 
     //load or calculate the suffix array
