@@ -9,5 +9,8 @@ class NativeSearchResultDeserializer : JsonDeserializer<NativeSearchResult> {
     override fun deserialize(
         json: JsonElement, typeOfT: Type, context: JsonDeserializationContext
     ): NativeSearchResult = NativeSearchResult(
-        json.asJsonObject.get("results").asJsonArray.get(0).asJsonObject.get("offsets").asJsonArray.map { it.asLong })
+        json.asJsonObject.get("results").asJsonArray.get(0).asJsonObject.get("offset").asLong,
+            json.asJsonObject.get("results").asJsonArray.get(0).asJsonObject.get("excerpt").asString,
+        json.asJsonObject.get("results").asJsonArray.get(0).asJsonObject.get("excerptOffset").asInt
+        )
 }

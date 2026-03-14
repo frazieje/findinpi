@@ -485,10 +485,14 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     int search_string_len = strlen(search_string);
 
     char *search_result;
-    char json_prefix[] = "{\"results\":[{\"offsets\":[";
+    char json_prefix[] = "{\"results\":[{\"offset\":";
     int json_prefix_len = strlen(json_prefix);
     char offset_result[21]; // enough space for unsigned long long max value (20) + null char
-    char json_suffix[] = "]}]}";
+    char json_offset_suffix[] = ",\"excerpt\":\"";
+    int json_offset_suffix_len = strlen(json_offset_suffix);
+    char json_excerpt_suffix[] = "\",\"excerptOffset\":";
+    int json_excerpt_suffix_len = strlen(json_excerpt_suffix);
+    char json_suffix[] = "}]}";
     int json_suffix_len = strlen(json_suffix);
 
     gettimeofday(&tval_before, NULL);
@@ -498,13 +502,6 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         fflush(stdout);
         int sr = searchtext(data, search_string, &result);
         if (sr > 0) found = 1;
-        sprintf(offset_result, "%llu", result);
-        int offset_result_len = strlen(offset_result);
-        int search_result_len = json_prefix_len + offset_result_len + json_suffix_len + 1;
-        search_result = malloc(search_result_len);
-        strncpy(search_result, json_prefix, search_result_len);
-        strncat(search_result, offset_result, offset_result_len + 1);
-        strncat(search_result, json_suffix, json_suffix_len + 1);
     }
 
     if (!found && search_string_len <= 7) {
@@ -522,13 +519,6 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
                 result = first_match;
             }
         }
-        sprintf(offset_result, "%d", first_match);
-        int offset_result_len = strlen(offset_result);
-        int search_result_len = json_prefix_len + offset_result_len + json_suffix_len + 1;
-        search_result = malloc(search_result_len);
-        strncpy(search_result, json_prefix, search_result_len);
-        strncat(search_result, offset_result, offset_result_len + 1);
-        strncat(search_result, json_suffix, json_suffix_len + 1);
     }
 
     if (!found) { // length >= 8
@@ -539,13 +529,6 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         extract_min_uint64(search_result, &min_value);
         result = min_value;
         free(search_result);
-        sprintf(offset_result, "%llu", min_value);
-        int offset_result_len = strlen(offset_result);
-        int search_result_len = json_prefix_len + offset_result_len + json_suffix_len + 1;
-        search_result = malloc(search_result_len);
-        strncpy(search_result, json_prefix, search_result_len);
-        strncat(search_result, offset_result, offset_result_len + 1);
-        strncat(search_result, json_suffix, json_suffix_len + 1);
     }
 
     (*env)->ReleaseStringUTFChars(env, searchText, search_string);
@@ -566,10 +549,30 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     }
     char pibuf[64];
     int n_read = read_n_at(fileno(fp), result - 16, pibuf, 64);
-    pibuf[63] = '\0';
+    int endchar = n_read == 64 ? n_read - 1 : n_read
+    pibuf[n_read] = '\0';
     fclose(fp);
 
     printf("pi excerpt read %d, string = %s\n", n_read, pibuf);
+
+    int pibuf_len = strlen(pibuf);
+    char excerpt_offset[] = "16";
+    int excerpt_offset_len = 2;
+
+    sprintf(offset_result, "%llu", result);
+    int offset_result_len = strlen(offset_result);
+    int search_result_len = json_prefix_len + offset_result_len + json_offset_suffix_len + pibuf_len + excerpt_offset_len + json_excerpt_suffix_len + json_suffix_len + 1;
+    search_result = malloc(search_result_len);
+    strncpy(search_result, json_prefix, json_prefix_len + 1);
+    strncat(search_result, offset_result, offset_result_len + 1);
+    strncat(search_result, json_offset_suffix, json_offset_suffix_len + 1);
+    strncat(search_result, pibuf, pibuf_len + 1);
+    strncat(search_result, json_excerpt_suffix, json_excerpt_suffix_len + 1);
+    strncat(search_result, excerpt_offset, excerpt_offset_len + 1);
+    strncat(search_result, json_suffix, json_suffix_len + 1);
+
+    printf("search result = %s\n", search_result);
+    fflush(stdout);
 
     jclass cls_native_result = (*env)->FindClass(env, "com/frazieje/findinpi/service/NativeResult");
     jmethodID cnstr_native_result = (*env)->GetMethodID(env, cls_native_result, "<init>", "(Ljava/lang/String;J)V");

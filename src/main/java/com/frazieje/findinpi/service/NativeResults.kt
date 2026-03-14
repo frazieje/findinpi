@@ -1,7 +1,9 @@
 package com.frazieje.findinpi.service
 
 data class NativeSearchResult(
-    val offsets: List<Long>
+    val offset: Long,
+    val excerpt: String,
+    val excerptOffset: Int,
 )
 
 data class NativeCountResult(
