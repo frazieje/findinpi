@@ -566,7 +566,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     }
     char pibuf[64];
     int n_read = read_n_at(fileno(fp), result - 16, pibuf, 64);
-
+    pibuf[63] = '\0';
     fclose(fp);
 
     printf("pi excerpt read %d, string = %s\n", n_read, pibuf);
