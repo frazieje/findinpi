@@ -88,6 +88,8 @@ val buildNativeTask = tasks.create<Exec>("buildNative") {
     dependsOn(copyExternalLibsTask, generateNativeBuildSystemTask)
     workingDir = nativeSourceDir
     commandLine = listOf("cmake", "--build", nativeBuildDir.absolutePath, "--target", "all")
+    inputs.dir(nativeSourceDir.absolutePath)
+    outputs.dir(File(nativeBuildDir, "libs").absolutePath)
 }
 
 tasks.getByName("classes").dependsOn(buildNativeTask)
