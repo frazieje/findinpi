@@ -545,7 +545,10 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
 
     elapsed = (tval_result.tv_sec*1000000 + tval_result.tv_usec) / 1000;
 
-    printf("search result returned in %lldms\n", elapsed);
+    printf("search result %llu returned in %lldms\n", result, elapsed);
+
+    printf("opening %s for reading", full_data_file_path)
+    fflush(stdout);
 
     FILE *fp = NULL;
     if((fp = fopen(full_data_file_path, "r")) == NULL) {
