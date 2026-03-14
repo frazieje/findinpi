@@ -493,6 +493,8 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     gettimeofday(&tval_before, NULL);
 
     if (result < 0 && search_string_len <= 5) {
+        printf("using strstr\n");
+        fflush(stdout);
         int sr = searchtext(data, search_string, &result);
         sprintf(offset_result, "%llu", result);
         int offset_result_len = strlen(offset_result);
@@ -504,6 +506,8 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     }
 
     if (result < 0 && search_string_len <= 7) {
+        printf("using suffix array\n");
+        fflush(stdout);
         saidx_t num_matches, offset;
         int first_match = 2147483647;
         num_matches = sa_search(data, (saidx_t)size, (sauchar_t *)search_string, (saidx_t)search_string_len, SA, (saidx_t)size, &offset);
@@ -525,6 +529,8 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     }
 
     if (result < 0) { // length >= 8
+        printf("using fm index\n");
+        fflush(stdout);
         result = femto_do_request(search_string, 1500 /* refactor to parameter/argument */, &search_result);
         unsigned long long min_value;
         extract_min_uint64(search_result, &min_value);
@@ -547,7 +553,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
 
     printf("search result %llu returned in %lldms\n", result, elapsed);
 
-    printf("opening %s for reading", full_data_file_path);
+    printf("opening %s for reading\n", full_data_file_path);
     fflush(stdout);
 
     FILE *fp = NULL;
@@ -559,7 +565,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
 
     fclose(fp);
 
-    printf("pi string = %s", pibuf);
+    printf("pi string = %s\n", pibuf);
 
     jclass cls_native_result = (*env)->FindClass(env, "com/frazieje/findinpi/service/NativeResult");
     jmethodID cnstr_native_result = (*env)->GetMethodID(env, cls_native_result, "<init>", "(Ljava/lang/String;J)V");
