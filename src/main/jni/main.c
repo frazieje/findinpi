@@ -547,7 +547,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
 
     printf("search result %llu returned in %lldms\n", result, elapsed);
 
-    printf("opening %s for reading", full_data_file_path)
+    printf("opening %s for reading", full_data_file_path);
     fflush(stdout);
 
     FILE *fp = NULL;
