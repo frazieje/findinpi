@@ -281,7 +281,7 @@ JNIEXPORT void JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_init(
     (*env)->ReleaseStringUTFChars(env, suffixArrayFilePath, suffix_array_file_path);
 
     gettimeofday(&tval_before, NULL);
-    size_t b_read = fread(SA, sizeof(saidx_t), size, fp);
+    size_t n_read = fread(SA, sizeof(saidx_t), size, fp);
     gettimeofday(&tval_after, NULL);
     timersub(&tval_after, &tval_before, &tval_result);
 
@@ -289,7 +289,7 @@ JNIEXPORT void JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_init(
 
     elapsed = (tval_result.tv_sec*1000000 + tval_result.tv_usec) / 1000;
 
-    printf("Finished reading %ld suffix array in %ldms\n", b_read, elapsed);
+    printf("Finished reading %ld byte suffix array in %ldms\n", n_read * sizeof(saidx_t), elapsed);
 
     femto_index_path = ((char *)((*env)->GetStringUTFChars(env, fmIndexFilePath, 0)));
 
@@ -390,6 +390,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         saidx_t num_matches, offset;
         int first_match = 2147483647;
         num_matches = sa_search(data, (saidx_t)size, (sauchar_t *)search_string, (saidx_t)search_string_len, SA, (saidx_t)size, &offset);
+        printf("found %d matches using suffix array", num_matches);
         for (saidx_t i = 0; i < num_matches; i++) {
             int match = SA[offset + i];
             if (match < first_match) {
