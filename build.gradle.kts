@@ -33,18 +33,22 @@ val generateExternalBuildSystemTask = tasks.create<Exec>("generateExternalBuildS
     dependsOn(tasks.getByName("compileJava"))
     workingDir = externalSourceDir
     commandLine = listOf("sh", "autogen.sh")
+    outputs.file(File(externalSourceDir, "configure").absolutePath)
 }
 
 val configureExternalBuildSystemTask = tasks.create<Exec>("configureExternalBuildSystem") {
     dependsOn(generateExternalBuildSystemTask)
     workingDir = externalSourceDir
     commandLine = listOf("./configure")
+    outputs.file(File(externalSourceDir, "config.status").absolutePath)
 }
 
 val buildExternalTask = tasks.create<Exec>("buildExternal") {
     dependsOn(configureExternalBuildSystemTask)
     workingDir = externalSourceDir
     commandLine = listOf("make", "-j${Runtime.getRuntime().availableProcessors()}")
+    outputs.dir(File(externalSourceDir, "src/main/.libs").absolutePath)
+    outputs.dir(File(externalSourceDir, "src/utils/.libs").absolutePath)
 }
 
 val copyExternalIncludes = tasks.create<Copy>("copyExternalIncludes") {
@@ -82,6 +86,7 @@ val generateNativeBuildSystemTask = tasks.create<Exec>("generateNativeBuildSyste
         "-DNATIVE_LIBS_DIR=${nativeBuildDir.absolutePath}/libs",
         "-DNATIVE_INCLUDE_DIR=${nativeBuildDir.absolutePath}/include"
     )
+    outputs.dir(nativeBuildDir.absolutePath)
 }
 
 val buildNativeTask = tasks.create<Exec>("buildNative") {
