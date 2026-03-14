@@ -20,6 +20,8 @@ sauchar_t *data;
 size_t size;
 saidx_t *SA;
 
+char *full_data_file_path;
+
 /* Size of each input chunk to be
    read and allocate for. */
 #ifndef  CHUNK_SIZE
@@ -98,7 +100,7 @@ int readall(FILE *in, unsigned char **dataptr, size_t *sizeptr)
     return READALL_OK;
 }
 
-ssize_t read_n_at(int fd, off_t offset, void *buf, size_t n) {
+ssize_t read_n_at(int fd, unsigned long long offset, void *buf, size_t n) {
     size_t total = 0;
     char *p = (char *)buf;
 
@@ -245,12 +247,18 @@ JNIEXPORT void JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_init(
     jobject thisObj,
     jstring dataFilePath,
     jstring suffixArrayFilePath,
-    jstring fmIndexFilePath
+    jstring fmIndexFilePath,
+    jstring fullDataFilePath
 ) {
     FILE *fp = NULL;
     int load_result = READALL_INVALID;
     struct timeval tval_before, tval_after, tval_result;
     int64_t elapsed;
+
+    char *full_path = ((char *)((*env)->GetStringUTFChars(env, fullDataFilePath, 0)));
+    int full_path_len = strlen(full_path);
+    strncpy(full_data_file_path, full_path, full_path_len + 1);
+    (*env)->ReleaseStringUTFChars(env, fullDataFilePath, full_path);
 
     char *data_file_path = ((char *)((*env)->GetStringUTFChars(env, dataFilePath, 0)));
 
@@ -483,7 +491,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
 
     gettimeofday(&tval_before, NULL);
 
-    if (search_string_len <= 5) {
+    if (result < 0 && search_string_len <= 5) {
         int sr = searchtext(data, search_string, &result);
         sprintf(offset_result, "%llu", result);
         int offset_result_len = strlen(offset_result);
@@ -492,7 +500,9 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         strncpy(search_result, json_prefix, search_result_len);
         strncat(search_result, offset_result, offset_result_len + 1);
         strncat(search_result, json_suffix, json_suffix_len + 1);
-    } else if (search_string_len <= 7) {
+    }
+
+    if (result < 0 && search_string_len <= 7) {
         saidx_t num_matches, offset;
         int first_match = 2147483647;
         num_matches = sa_search(data, (saidx_t)size, (sauchar_t *)search_string, (saidx_t)search_string_len, SA, (saidx_t)size, &offset);
@@ -501,6 +511,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
             int match = SA[offset + i];
             if (match < first_match) {
                 first_match = match;
+                result = first_match;
             }
         }
         sprintf(offset_result, "%d", first_match);
@@ -510,7 +521,9 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         strncpy(search_result, json_prefix, search_result_len);
         strncat(search_result, offset_result, offset_result_len + 1);
         strncat(search_result, json_suffix, json_suffix_len + 1);
-    } else { // length >= 8
+    }
+
+    if (result < 0) { // length >= 8
         result = femto_do_request(search_string, 1500 /* refactor to parameter/argument */, &search_result);
         unsigned long long min_value;
         extract_min_uint64(search_result, &min_value);
@@ -532,6 +545,18 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     elapsed = (tval_result.tv_sec*1000000 + tval_result.tv_usec) / 1000;
 
     printf("search result returned in %lldms\n", elapsed);
+
+    FILE *fp = NULL;
+    if((fp = fopen(full_data_file_path, "r")) == NULL) {
+        perror("fopen");
+        return;
+    }
+    char pibuf[64];
+    read_n_at(full_data_file_path, result - 16, pibuf, 64);
+
+    fclose(fp);
+
+    printf("pi string = %s", pibuf);
 
     jclass cls_native_result = (*env)->FindClass(env, "com/frazieje/findinpi/service/NativeResult");
     jmethodID cnstr_native_result = (*env)->GetMethodID(env, cls_native_result, "<init>", "(Ljava/lang/String;J)V");

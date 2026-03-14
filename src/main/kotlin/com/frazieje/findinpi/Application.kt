@@ -27,6 +27,8 @@ fun main(args: Array<String>) {
 
     val fmIndexPath = getArg(2, "FM_INDEX")
 
+    val fullDataFilePath = getArg(3, "FULL_PI_DATA")
+
     fun checkFile(path: String, backup: (() -> String)? = null) = try {
         val file = File(path)
         file.reader().use { reader -> reader.read() }
@@ -46,11 +48,12 @@ fun main(args: Array<String>) {
 
     val suffixArrayFile = checkFile(suffixArrayPath)
     val fmIndexFile = checkFile(fmIndexPath)
+    val fullDataFile = checkFile(fullDataFilePath)
 
-    logger.info("Starting Application. Data file location: $dataFile, suffix array file: $suffixArrayFile, fm-index file: $fmIndexFile. Begin loading...")
+    logger.info("Starting Application. Data file location: $dataFile, suffix array file: $suffixArrayFile, fm-index file: $fmIndexFile. Full data file: $fullDataFile. Begin loading...")
 
     val piFinder: PiFinder = NativePiFinder()
-    piFinder.init(dataFilePath, suffixArrayFile, fmIndexFile)
+    piFinder.init(dataFilePath, suffixArrayFile, fmIndexFile, fullDataFile)
 
     embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = {
         configureRouting(FindInPi(piFinder))
