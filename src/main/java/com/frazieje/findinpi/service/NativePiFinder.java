@@ -32,14 +32,18 @@ public class NativePiFinder implements PiFinder {
             var searchResult = gson.fromJson(nativeResult.getResultJson(), NativeSearchResult.class);
             return new SearchResult(
                 countResult.getCount(),
-                searchResult.getOffsets(),
+                searchResult.getOffset(),
+                searchResult.getExcerpt(),
+                searchResult.getExcerptOffset(),
                 countTime + nativeResult.getSearchTimeMs(),
                 null
             );
         } else {
             return new SearchResult(
             0,
-                Collections.emptyList(),
+                -1,
+                "",
+                -1,
                 countTime,
                 null
             );
