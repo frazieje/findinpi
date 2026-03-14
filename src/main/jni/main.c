@@ -474,7 +474,8 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     jstring searchText
 ) {
     char *search_string;
-    unsigned long long result = -1;
+    unsigned long long result;
+    int found = 0;
 
     struct timeval tval_before, tval_after, tval_result;
     int64_t elapsed;
@@ -492,10 +493,11 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
 
     gettimeofday(&tval_before, NULL);
 
-    if (result < 0 && search_string_len <= 5) {
+    if (!found && search_string_len <= 5) {
         printf("using strstr\n");
         fflush(stdout);
         int sr = searchtext(data, search_string, &result);
+        if (sr > 0) found = 1;
         sprintf(offset_result, "%llu", result);
         int offset_result_len = strlen(offset_result);
         int search_result_len = json_prefix_len + offset_result_len + json_suffix_len + 1;
@@ -505,13 +507,14 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         strncat(search_result, json_suffix, json_suffix_len + 1);
     }
 
-    if (result < 0 && search_string_len <= 7) {
+    if (!found && search_string_len <= 7) {
         printf("using suffix array\n");
         fflush(stdout);
         saidx_t num_matches, offset;
         int first_match = 2147483647;
         num_matches = sa_search(data, (saidx_t)size, (sauchar_t *)search_string, (saidx_t)search_string_len, SA, (saidx_t)size, &offset);
         printf("found %d matches using suffix array\n", num_matches);
+        if (num_matches > 0) found = 1;
         for (saidx_t i = 0; i < num_matches; i++) {
             int match = SA[offset + i];
             if (match < first_match) {
@@ -528,7 +531,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         strncat(search_result, json_suffix, json_suffix_len + 1);
     }
 
-    if (result < 0) { // length >= 8
+    if (!found) { // length >= 8
         printf("using fm index\n");
         fflush(stdout);
         result = femto_do_request(search_string, 1500 /* refactor to parameter/argument */, &search_result);
