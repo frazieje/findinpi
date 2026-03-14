@@ -1,6 +1,6 @@
 package com.frazieje.findinpi.service
 
 data class NativeResult(
-    val femtoResultJson: String,
+    val resultJson: String,
     val searchTimeMs: Long,
 )

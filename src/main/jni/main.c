@@ -267,6 +267,8 @@ JNIEXPORT void JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_init(
 
     char *suffix_array_file_path = ((char *)((*env)->GetStringUTFChars(env, suffixArrayFilePath, 0)));
 
+    printf("Allocated %lu bytes for suffix array.\n", sizeof(saidx_t) * size);
+
     //load or calculate the suffix array
     if((fp = fopen(suffix_array_file_path, "r")) == NULL) {
         perror("fopen");
@@ -337,6 +339,20 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_coun
     return obj_result;
 }
 
+int searchtext(char *data, char *str, unsigned long long *result) {
+
+    int find_result = -1;
+    char *loc;
+
+    loc = strstr(data, str);
+    if(loc != NULL) {
+        *result = loc - data;
+        find_result = 0;
+    }
+
+    return find_result;
+}
+
 JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_searchInternal(
     JNIEnv *env,
     jobject thisObj,
@@ -352,20 +368,47 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
 
     int search_string_len = strlen(search_string);
 
+    char *search_result;
+    char json_prefix[] = "{\"results\":[{\"offsets\":[";
+    int json_prefix_len = strlen(json_prefix);
+    char offset_result[21]; // enough space for unsigned long long max value (20) + null char
+    char json_suffix[] = "]}]}";
+    int json_suffix_len = strlen(json_suffix);
+
+    gettimeofday(&tval_before, NULL);
+
     if (search_string_len <= 5) {
-        // search linearly using strstr
+        int sr = searchtext(data, search_string, &result);
+        sprintf(offset_result, "%llu", result);
+        int offset_result_len = strlen(offset_result);
+        int search_result_len = json_prefix_len + offset_result_len + json_suffix_len + 1;
+        search_result = malloc(search_result_len);
+        strncpy(search_result, json_prefix, search_result_len);
+        strncat(search_result, offset_result, offset_result_len + 1);
+        strncat(search_result, json_suffix, json_suffix_len + 1);
     } else if (search_string_len <= 7) {
-        // search using libdivsufsort
+        saidx_t num_matches, offset;
+        int first_match = 2147483647;
+        num_matches = sa_search(data, (saidx_t)size, (sauchar_t *)search_string, (saidx_t)search_string_len, SA, (saidx_t)size, &offset);
+        for (saidx_t i = 0; i < numMatches; i++) {
+            int match = (int)strtol(&SA[offset + i], NULL, 10);
+            if (match < first_match) {
+                first_match = match;
+            }
+        }
+        sprintf(offset_result, "%d", first_match);
+        int offset_result_len = strlen(offset_result);
+        int search_result_len = json_prefix_len + offset_result_len + json_suffix_len + 1;
+        search_result = malloc(search_result_len);
+        strncpy(search_result, json_prefix, search_result_len);
+        strncat(search_result, offset_result, offset_result_len + 1);
+        strncat(search_result, json_suffix, json_suffix_len + 1);
     } else { // length >= 8
-        // search using femto
+        result = femto_do_request(search_string, 1500 /* refactor to parameter/argument */, &search_result);
     }
 
     (*env)->ReleaseStringUTFChars(env, searchText, search_string);
 
-    char *search_result;
-
-    gettimeofday(&tval_before, NULL);
-    result = femto_do_request(search_string, 20, &search_result);
     gettimeofday(&tval_after, NULL);
     timersub(&tval_after, &tval_before, &tval_result);
 

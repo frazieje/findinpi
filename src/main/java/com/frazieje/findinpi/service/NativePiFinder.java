@@ -13,7 +13,7 @@ public class NativePiFinder implements PiFinder {
         System.loadLibrary("bigfind");
     }
 
-    private final Gson gson = new GsonBuilder().registerTypeAdapter(FemtoSearchResult.class, new FemtoSearchResultDeserializer()).registerTypeAdapter(FemtoCountResult.class, new FemtoCountResultDeserializer()).create();
+    private final Gson gson = new GsonBuilder().registerTypeAdapter(NativeSearchResult.class, new NativeSearchResultDeserializer()).registerTypeAdapter(NativeCountResult.class, new NativeCountResultDeserializer()).create();
 
     @Override
     public native void init(@NotNull String dataFilePath, @NotNull String suffixArrayFilePath, @NotNull String fmIndexFilePath);
@@ -26,10 +26,10 @@ public class NativePiFinder implements PiFinder {
     public @NotNull SearchResult search(@NotNull String searchText) {
         var nativeResult = countInternal(searchText);
         var countTime = nativeResult.getSearchTimeMs();
-        var countResult = gson.fromJson(nativeResult.getFemtoResultJson(), FemtoCountResult.class);
+        var countResult = gson.fromJson(nativeResult.getResultJson(), NativeCountResult.class);
         if (countResult.getCount() > 0) {
             nativeResult = searchInternal(searchText);
-            var searchResult = gson.fromJson(nativeResult.getFemtoResultJson(), FemtoSearchResult.class);
+            var searchResult = gson.fromJson(nativeResult.getResultJson(), NativeSearchResult.class);
             return new SearchResult(
                 countResult.getCount(),
                 searchResult.getOffsets(),

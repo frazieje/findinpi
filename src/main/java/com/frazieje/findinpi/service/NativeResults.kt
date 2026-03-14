@@ -1,9 +1,9 @@
 package com.frazieje.findinpi.service
 
-data class FemtoSearchResult(
+data class NativeSearchResult(
     val offsets: List<Long>
 )
 
-data class FemtoCountResult(
+data class NativeCountResult(
     val count: Long
 )
