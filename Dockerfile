@@ -5,7 +5,8 @@ COPY --chown=gradle:gradle . /home/gradle/src
 WORKDIR /home/gradle/src
 RUN gradle build --no-daemon
 
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-debian13
+RUN apt-get update && apt-get install -y libdivsufsort3
 EXPOSE 8080
 COPY --from=builder /home/gradle/src/build/distributions/findinpi.tar /opt/
 WORKDIR /opt
