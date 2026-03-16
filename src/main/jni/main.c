@@ -1,3 +1,4 @@
+#define _FILE_OFFSET_BITS 64
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,6 +7,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <time.h>
 #include "divsufsort.h"
 #include "femto.h"
@@ -100,14 +102,17 @@ int readall(FILE *in, unsigned char **dataptr, size_t *sizeptr)
     return READALL_OK;
 }
 
-ssize_t read_n_at(int fd, unsigned long long offset, void *buf, size_t n) {
+ssize_t read_n_at(int fd, off_t offset, void *buf, size_t n) {
     size_t total = 0;
     char *p = (char *)buf;
-
     while (total < n) {
-        ssize_t r = pread(fd, p + total, n - total, offset + total);
+        off_t cur = offset + (off_t)total;
+        errno = 0;
+        ssize_t r = pread(fd, p + total, n - total, cur);
+        fprintf(stderr,
+                "pread(fd=%d, offset=%jd, count=%zu) -> r=%zd errno=%d\n",
+                fd, (intmax_t)cur, n - total, r, errno);
         if (r == 0) {
-            // EOF before reading n bytes
             break;
         }
         if (r < 0) {
@@ -118,7 +123,6 @@ ssize_t read_n_at(int fd, unsigned long long offset, void *buf, size_t n) {
         }
         total += (size_t)r;
     }
-
     return (ssize_t)total;
 }
 
@@ -501,10 +505,10 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         printf("using strstr\n");
         fflush(stdout);
         int sr = searchtext(data, search_string, &result);
-        if (sr > 0) found = 1;
+        if (sr == 0) found = 1;
     }
 
-    if (!found && search_string_len <= 7) {
+    if (!found && search_string_len <= 8) {
         printf("using suffix array\n");
         fflush(stdout);
         saidx_t num_matches, offset;
@@ -521,7 +525,7 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
         }
     }
 
-    if (!found) { // length >= 8
+    if (!found) { // length >= 9
         printf("using fm index\n");
         fflush(stdout);
         femto_do_request(search_string, 1500 /* refactor to parameter/argument */, &search_result);
@@ -543,21 +547,31 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     printf("opening %s for reading\n", full_data_file_path);
     fflush(stdout);
 
+    sprintf(offset_result, "%llu", result);
+    int offset_result_len = strlen(offset_result);
+
     FILE *fp = NULL;
     if((fp = fopen(full_data_file_path, "r")) == NULL) {
         perror("fopen");
     }
-    char pibuf[64];
-    int read_at;
-    int read_at_offset = 16;
+    struct stat st;
+    int fd = fileno(fp);
+    fstat(fd, &st);
+    char pibuf[65];
+    off_t read_at;
+    off_t max_offset = st.st_size - 1;
+    int read_at_offset = 24;
     if (result < read_at_offset) {
         read_at = 0;
         read_at_offset = result;
+    } else if (max_offset - result < 30) {
+        off_t diff = 64 - (max_offset - result) - 1;
+        read_at = result - diff;
+        read_at_offset = (int)diff;
     } else {
         read_at = result - read_at_offset;
     }
-    int n_read = read_n_at(fileno(fp), read_at, pibuf, 64);
-    int endchar = n_read == 64 ? n_read - 1 : n_read;
+    int n_read = read_n_at(fd, read_at, pibuf, 64);
     pibuf[n_read] = '\0';
     fclose(fp);
 
@@ -569,8 +583,6 @@ JNIEXPORT jobject JNICALL Java_com_frazieje_findinpi_service_NativePiFinder_sear
     sprintf(excerpt_offset, "%d", read_at_offset);
     int excerpt_offset_len = strlen(excerpt_offset);
 
-    sprintf(offset_result, "%llu", result);
-    int offset_result_len = strlen(offset_result);
     int search_result_len = json_prefix_len + offset_result_len + json_offset_suffix_len + pibuf_len + excerpt_offset_len + json_excerpt_suffix_len + json_suffix_len + 1;
     search_result = malloc(search_result_len);
     strncpy(search_result, json_prefix, json_prefix_len + 1);

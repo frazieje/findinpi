@@ -99,10 +99,10 @@ val buildNativeTask = tasks.create<Exec>("buildNative") {
 
 tasks.getByName("classes").dependsOn(buildNativeTask)
 
-tasks.withType<JavaCompile> {
-    val compilerArgs = options.compilerArgs
-    compilerArgs.add("-h")
-    compilerArgs.add(nativeBuildDir.absolutePath)
+tasks.withType<JavaCompile>().configureEach {
+    options.headerOutputDirectory.set(
+        nativeBuildDir
+    )
 }
 
 repositories {
