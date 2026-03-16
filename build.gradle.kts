@@ -99,7 +99,7 @@ val buildNativeTask = tasks.create<Exec>("buildNative") {
 
 tasks.getByName("classes").dependsOn(buildNativeTask)
 
-tasks.withType<JavaCompile>().configureEach {
+tasks.named<JavaCompile>("compileJava") {
     options.headerOutputDirectory.set(
         nativeBuildDir
     )
